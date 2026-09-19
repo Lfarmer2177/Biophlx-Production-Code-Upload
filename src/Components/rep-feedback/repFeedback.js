@@ -1,17 +1,26 @@
-export function describeRep(rom, target, available = true) {
-  const value = rom == null ? NaN : Number(rom);
-  const goal = target == null ? NaN : Number(target);
-  if (!available || !Number.isFinite(value) || value <= 0) return { value: null, percent: null, label: 'Measurement unavailable' };
-  if (!Number.isFinite(goal) || goal <= 0) return { value, percent: null, label: 'Range recorded' };
-  const percent = Math.round(value / goal * 100);
-  return { value, percent, label: percent >= 100 ? 'Range target reached' : 'Below range target' };
+// Existing BIOPHLX ROM scoring policy; the backend stores, rather than computes, score.
+// This is a range score, not an exercise-specific form or safety assessment.
+function measurement(value) {
+  if (value == null || value === '' || typeof value === 'boolean') return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
-// Never substitute zero or reuse the other band when a measurement is absent.
-export function averageBands(first, second) {
-  if (first == null || second == null || first === '' || second === '') return null;
-  const a = Number(first), b = Number(second);
-  return Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0 ? (a + b) / 2 : null;
+export function bandRating(rom) {
+  const value = measurement(rom);
+  return value == null ? null : value > 120 ? 100 : value > 90 ? 50 : 0;
+}
+
+export function meanMetric(first, second) {
+  const a = measurement(first), b = measurement(second);
+  return a == null || b == null ? null : (a + b) / 2;
+}
+
+export const averageBands = meanMetric;
+
+export function combinedRating(first, second) {
+  const value = meanMetric(first, second);
+  return value == null || first > 100 || second > 100 ? null : Math.round(value);
 }
 
 export function bandLabel(slot) {
@@ -19,15 +28,18 @@ export function bandLabel(slot) {
   const limb = slot?.limb === 0 ? 'arm' : slot?.limb === 1 ? 'leg' : 'placement';
   return `${side} ${limb}`;
 }
-export function bandRating(rom, target) {
-  const result = describeRep(rom, target);
-  return result.percent == null ? null : Math.min(100, result.percent);
-}
-export function combinedRating(first, second) {
-  return first == null || second == null ? null : (first + second) / 2;
-}
-export function meanMetric(first, second) {
-  if (first == null || second == null || first === '' || second === '') return null;
-  const a = Number(first), b = Number(second);
-  return Number.isFinite(a) && Number.isFinite(b) && a >= 0 && b >= 0 ? (a + b) / 2 : null;
+
+// CreateSessionItemRepInput: score/rom/momentum Int; tut/velocity Float.
+export function repMetricsInput({ ROM, Score, TUT, Velocity, Momentum }) {
+  const integer = value => {
+    const n = measurement(value);
+    return n == null || Math.round(n) > 2147483647 ? null : Math.round(n);
+  };
+  return {
+    rom: integer(ROM),
+    score: Score == null || Score > 100 ? null : integer(Score),
+    tut: measurement(TUT),
+    velocity: measurement(Velocity),
+    momentum: integer(Momentum),
+  };
 }

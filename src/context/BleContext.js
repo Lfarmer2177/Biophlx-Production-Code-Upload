@@ -1,3 +1,4 @@
+import { bandRating } from '../Components/rep-feedback/repFeedback';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, PermissionsAndroid, Platform } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
@@ -28,10 +29,10 @@ export const CHARACTERISTICS = {
 };
 
 const initialFeedback = {
-    ROM: 0,
+    ROM: null,
     TUT: 0,
     Velocity: 0,
-    Score: 0,
+    Score: null,
     'Current Position': 0,
     reps: 0,
     sets: 0,
@@ -170,7 +171,7 @@ export function BleProvider({ children }) {
                 next.setc = value;
             }
             if (label === 'exerciseStage') next.exerciseStage = value;
-            if (label === 'ROM') next.Score = value > 120 ? 100 : value > 90 ? 50 : 0;
+            if (label === 'ROM') next.Score = bandRating(value);
             return next;
         });
     }, [deviceSettings]);

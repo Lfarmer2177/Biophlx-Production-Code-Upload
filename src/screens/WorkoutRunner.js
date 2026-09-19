@@ -1,4 +1,4 @@
-import { averageBands, bandLabel, bandRating, combinedRating, meanMetric } from '../Components/rep-feedback/repFeedback';
+import { averageBands, bandLabel, bandRating, combinedRating, meanMetric, repMetricsInput } from '../Components/rep-feedback/repFeedback';
 import RepFeedbackCard from '../Components/rep-feedback/RepFeedbackCard';
 import { PlacementModal, TutorialCard, DeviceInstructions } from '../Components/band-setup/BandSetup';
 import { placementForType, placementSlots } from '../Components/band-setup/placement';
@@ -344,7 +344,7 @@ const IntensityBars = ({ data, onInfo }) => {
               />
             </View>
             <Text style={styles.barValue}>
-              {Number(displayVal).toFixed ? Number(displayVal).toFixed(decimals) : displayVal}
+              {Number(displayVal).toFixed ? (Number.isFinite(Number(displayVal)) ? Number(displayVal).toFixed(decimals) : displayVal) : displayVal}
             </Text>
           </View>
         );
@@ -354,7 +354,7 @@ const IntensityBars = ({ data, onInfo }) => {
 };
 
 
-export default function WorkoutRunner({ route }) {
+export default function WorkoutRunner({ route, navigation }) {
   const workoutPlan = route?.params?.workoutPlan || null;
   const scheduledItems = Array.isArray(workoutPlan?.items) ? workoutPlan.items : [];
   const normalizedPlanItems = useMemo(() => {
@@ -441,6 +441,18 @@ export default function WorkoutRunner({ route }) {
     updateDeviceSetting,
   } = useBle();
   const [exerciseMap, setExerciseMap] = useState({});
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const result = await client.graphql({ query: listExercises, variables: { limit: 1000 } });
+        const response = result.data?.listExercises;
+        const items = Array.isArray(response) ? response : response?.items || [];
+        if (active) setExerciseMap(Object.fromEntries(items.filter(Boolean).map(ex => [ex.name || ex.exercise_id, ex])));
+      } catch (error) { console.warn('Exercise metadata unavailable', error?.message); }
+    })();
+    return () => { active = false; };
+  }, [client]);
   // const [feedback, setFeedback] = useState({
   //   ROM: 0,
   //   TUT: 0,
@@ -481,7 +493,7 @@ export default function WorkoutRunner({ route }) {
 
   const [maxRom, setMaxRom] = useState(120);
   const prevRepsRef = useRef(0);
-  const prevSetsRef = useRef(0);
+  const prevSetsRef = useRef(1);
   const weightRef = useRef(0);
   const workoutRef = useRef(workoutOptions[0] || DEFAULT_WORKOUT_OPTIONS[0]);
   const feedbackRef = useRef(feedback);
@@ -745,7 +757,9 @@ export default function WorkoutRunner({ route }) {
     const config = WORKOUT_COMMANDS[pendingWorkout || selectedWorkout];
     const slots = placementSlots(placement, placementSide);
     if (!config || !slots) return;
+    workoutRef.current = pendingWorkout || selectedWorkout;
     startingRef.current = true;
+    prevSetsRef.current = feedbackRef.current.sets || 1;
     repReviewRun.current += 1;
     secondaryRepSamples.current.clear();
     setPreparingBands(true);
@@ -989,11 +1003,7 @@ export default function WorkoutRunner({ route }) {
         session_item_index,
         session_item_set_index,
         session_item_rep_index,
-        rom: toInt(snapshot.ROM),
-        score: snapshot.Score == null ? null : toInt(snapshot.Score),
-        tut: toNumber(snapshot.TUT),
-        velocity: toInt(snapshot.Velocity),
-        momentum: toInt(snapshot.Momentum),
+        ...repMetricsInput(snapshot),
       };
       try {
         await client.graphql({
@@ -1057,11 +1067,6 @@ export default function WorkoutRunner({ route }) {
       const workoutLabel = workoutRef.current;
       const setNumber = latest.sets || 1;
 
-      const exercise = exerciseMap[workoutLabel] || Object.values(exerciseMap).find(ex => ex?.name?.toLowerCase() === workoutLabel?.toLowerCase());
-      const type = WORKOUT_COMMANDS[workoutLabel]?.command?.[1];
-      const target1 = type <= 5 ? exercise?.target_rom_arm : exercise?.target_rom_leg;
-      const target2 = type <= 5 || type >= 11 ? exercise?.target_rom_arm : exercise?.target_rom_leg;
-      const target = averageBands(target1, target2);
       const reviews = [];
       const newSnapshots = [];
       const newVelocities = [];
@@ -1083,7 +1088,7 @@ export default function WorkoutRunner({ route }) {
           weight: weightVal,
           rowId,
         };
-        reviews.push({ band1Label: bandLabel(deviceSettings?.primary), band2Label: bandLabel(deviceSettings?.secondary), target1, target2, primaryMetrics: { rom: latest.ROM, tut: latest.TUT, velocity: latest.Velocity }, run: repReviewRun.current, id: rowId, workout: workoutLabel, setNo: setNumber, repIndex, primaryRom: repsToAdd === 1 ? latest.ROM : null, secondaryRom: null, rom: null, target, primaryAvailable: repsToAdd === 1, available: false });
+        reviews.push({ band1Label: bandLabel(deviceSettings?.primary), band2Label: bandLabel(deviceSettings?.secondary), primaryMetrics: { rom: latest.ROM, tut: latest.TUT, velocity: latest.Velocity }, run: repReviewRun.current, id: rowId, workout: workoutLabel, setNo: setNumber, repIndex, primaryRom: repsToAdd === 1 ? latest.ROM : null, secondaryRom: null, rom: null, primaryAvailable: repsToAdd === 1, available: false });
         newSnapshots.push(snapshot);
         newVelocities.push(vel);
         newMomenta.push(momentumVal);
@@ -1147,7 +1152,7 @@ export default function WorkoutRunner({ route }) {
       const original = pendingReviewSnapshots.current.get(review.id);
       if (!original) continue;
       submittedReviews.current.add(review.id);
-      const score = combinedRating(bandRating(review.primaryRom, review.target1), bandRating(review.secondaryRom, review.target2));
+      const score = combinedRating(bandRating(review.primaryRom), bandRating(review.secondaryRom));
       const velocity = meanMetric(review.primaryMetrics?.velocity, review.secondaryMetrics?.velocity);
       const snapshot = { ...original, ROM: review.rom, Score: score,
         TUT: meanMetric(review.primaryMetrics?.tut, review.secondaryMetrics?.tut),
@@ -1285,11 +1290,8 @@ export default function WorkoutRunner({ route }) {
         });
         groups[key].forEach((row, repIdx) => {
           const session_item_rep_index = repIdx + 1;
-          const rom = toInt(row.rom);
-          const score = row.score == null ? null : toInt(row.score);
-          const tut = toNumber(row.tut);
-          const velocity = toInt(row.velocity);
-          const momentum = toInt(row.momentum);
+          const metrics = repMetricsInput({ ROM: row.rom, Score: row.score,
+            TUT: row.tut, Velocity: row.velocity, Momentum: row.momentum });
           promises.push(
             client.graphql({
               query: CREATE_SESSION_ITEM_REP,
@@ -1299,11 +1301,7 @@ export default function WorkoutRunner({ route }) {
                   session_item_index,
                   session_item_set_index: setIndex,
                   session_item_rep_index,
-                  rom,
-                  score,
-                  tut,
-                  velocity,
-                  momentum,
+                  ...metrics,
                 },
               },
             })
@@ -1366,38 +1364,16 @@ export default function WorkoutRunner({ route }) {
       if (!item?.info) return;
       setInfoModal({ visible: true, title: item.title, text: item.info });
     };
-    const resolveExercise = () => {
-      const label = (pendingWorkout || selectedWorkout || '').toLowerCase();
-      const byId = exerciseMap[pendingWorkout || selectedWorkout];
-      if (byId) return byId;
-      const match = Object.values(exerciseMap).find(
-        (ex) => typeof ex?.name === 'string' && ex.name.toLowerCase() === label
-      );
-      if (match) return match;
-      const contains = Object.values(exerciseMap).find(
-        (ex) => typeof ex?.name === 'string' && label.includes(ex.name.toLowerCase())
-      );
-      return contains;
-    };
-    const currentEx = resolveExercise();
-    const targetRomLeg = Number(currentEx?.target_rom_leg) || maxRom;
-    const targetRomArm = Number(currentEx?.target_rom_arm) || maxRom;
-    const liveRomTarget = targetRomLeg || targetRomArm || maxRom;
-    const romLegPct = targetRomLeg ? Math.round((feedback.ROM / targetRomLeg) * 100) : 0;
-    const romArmPct = targetRomArm ? Math.round((secondaryFeedback.ROM / targetRomArm) * 100) : 0;
+    // ROM is displayed in degrees, not against nonexistent Exercise target fields.
+    const liveRomTarget = null;
+    const romLegPct = feedback.ROM;
+    const romArmPct = secondaryFeedback.ROM;
     const targetTut = Number(currentWorkoutItem?.target_tut) || maxTUT;
     const targetVelocity = Number(currentWorkoutItem?.target_velocity) || maxVelocity;
     const liveTutTarget = targetTut || maxTUT;
     const liveVelocityTarget = targetVelocity || maxVelocity;
     const tutPct = targetTut ? Math.round((feedback.TUT / targetTut) * 100) : 0;
     const velPct = targetVelocity ? Math.round((feedback.Velocity / targetVelocity) * 100) : 0;
-    const romScorePct = targetRomLeg
-      ? Math.round((feedback.ROM / targetRomLeg) * 100)
-      : targetRomArm
-        ? Math.round((secondaryFeedback.ROM / targetRomArm) * 100)
-        : 0;
-    const scoreValue = romScorePct * 0.7 + tutPct * 0.1 + velPct * 0.2;
-
     const chartData = [
       {
         title: 'Velocity',
@@ -1415,17 +1391,17 @@ export default function WorkoutRunner({ route }) {
         display: feedback.ROM,
         decimals: 0,
         info:
-          'ROM is a measure of the key joint range of motion (degrees) for the exercise. It reflects form quality; higher ROM usually means better form. It is a key metric in the quality of the rep Score.',
+          'Range of motion in degrees. Rep ratings use the existing ROM rule: 0 through 90 degrees, 50 above 90, and 100 above 120.',
       },
       secondaryDevice
         ? {
-          title: 'ROM (Arm)',
+          title: `ROM (${bandLabel(deviceSettings?.secondary)})`,
           value: romArmPct,
           rom: true,
           display: secondaryFeedback.ROM,
           decimals: 0,
           info:
-            'ROM is the joint range of motion (degrees) from the arm sensor. It reflects form quality; higher ROM usually means better form. It also drives the overall rep score. Compared against target_rom_arm for this exercise.',
+            'Range of motion in degrees from the second band. The same ROM scoring rule applies to both bands.',
         }
         : null,
       {
@@ -1965,7 +1941,7 @@ export default function WorkoutRunner({ route }) {
                       threshold70: true,
                       decimals: 2,
                     },
-                    { title: 'Combined score', value: summary.Score ?? 0, display: summary.Score ?? 'Not rated', decimals: 0 },
+                    { title: 'Combined score', value: summary.Score ?? 0, display: summary.Score ?? '—', decimals: 0 },
                   ]}
                   onInfo={handleInfo}
                 />
