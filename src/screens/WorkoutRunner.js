@@ -1,3 +1,7 @@
+import { averageBands, bandLabel, bandRating, combinedRating, meanMetric } from '../Components/rep-feedback/repFeedback';
+import RepFeedbackCard from '../Components/rep-feedback/RepFeedbackCard';
+import { PlacementModal, TutorialCard, DeviceInstructions } from '../Components/band-setup/BandSetup';
+import { placementForType, placementSlots } from '../Components/band-setup/placement';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -157,7 +161,7 @@ const velOptions = [
   { label: 'Intense', value: 0.5 },
 ];
 const LOAD_OPTIONS = [2.5, 5, 10, 25, 35, 45];
-const COUNTDOWN_SECONDS = 3;
+const COUNTDOWN_SECONDS = 5;
 const SECONDARY_COMMAND_DELAY_MS = 500;
 
 const isIdleStage = (stage) => stage === ExerciseStage.idle.value;
@@ -411,6 +415,11 @@ export default function WorkoutRunner({ route }) {
   );
   const [readyModalVisible, setReadyModalVisible] = useState(false);
   const [pendingWorkout, setPendingWorkout] = useState(null);
+  const [placementSide, setPlacementSide] = useState('right');
+  const [preparingBands, setPreparingBands] = useState(false);
+  const startingRef = useRef(false);
+  const [placementError, setPlacementError] = useState('');
+  const placement = placementForType(WORKOUT_COMMANDS[pendingWorkout || selectedWorkout]?.command?.[1]);
 
   const handleInfo = useCallback(
     (item) => {
@@ -429,6 +438,7 @@ export default function WorkoutRunner({ route }) {
     secondaryFeedback,
     readCurrentPosition,
     deviceSettings,
+    updateDeviceSetting,
   } = useBle();
   const [exerciseMap, setExerciseMap] = useState({});
   // const [feedback, setFeedback] = useState({
@@ -445,6 +455,12 @@ export default function WorkoutRunner({ route }) {
   const [velLevel, setVelLevel] = useState(0);
   const [weight, setWeight] = useState(0);
   const [repSnapshots, setRepSnapshots] = useState([]);
+  const [repReviews, setRepReviews] = useState([]);
+  const secondaryRepSamples = useRef(new Map());
+  const secondaryReviewCount = useRef(0);
+  const repReviewRun = useRef(0);
+  const pendingReviewSnapshots = useRef(new Map());
+  const submittedReviews = useRef(new Set());
   const [velocityArray, setVelocityArray] = useState([]);
   const [forceArray, setForceArray] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -458,6 +474,7 @@ export default function WorkoutRunner({ route }) {
   const [deviceSlotToConnect, setDeviceSlotToConnect] = useState('primary');
   const [customerId, setCustomerId] = useState(route?.params?.customer_id || null);
   const sessionIdRef = useRef(null);
+  const sessionCreationRef = useRef(null);
   const sessionItemIndexMap = useRef({});
   const sessionItemCounterRef = useRef(0);
   const sessionRepCountMap = useRef({});
@@ -601,11 +618,11 @@ export default function WorkoutRunner({ route }) {
 
   // Monitor device connection for workout phase
   useEffect(() => {
-    if (!connectedDevice && workoutPhase !== 'idle') {
+    if ((!connectedDevice || !secondaryDevice) && workoutPhase !== 'idle') {
       setWorkoutPhase('idle');
       setCountdownSeconds(COUNTDOWN_SECONDS);
     }
-  }, [connectedDevice, workoutPhase]);
+  }, [connectedDevice, secondaryDevice, workoutPhase]);
 
   // Countdown timer logic
   useEffect(() => {
@@ -647,6 +664,11 @@ export default function WorkoutRunner({ route }) {
   }, [currentSessionId]);
 
   const handleWorkoutSelection = (workout) => {
+    if (workoutPhase !== 'idle') {
+      Alert.alert('Exercise in progress', 'End the current exercise before choosing another.');
+      return;
+    }
+    setPlacementError('');
     setSelectedWorkout(workout);
     setPendingWorkout(workout);
     setReadyModalVisible(true);
@@ -715,20 +737,36 @@ export default function WorkoutRunner({ route }) {
 
 
   const startWorkoutCommand = async () => {
-    const key = pendingWorkout || selectedWorkout;
-    const config = WORKOUT_COMMANDS[key];
-    if (!config) {
-      closeReadyModal();
+    if (startingRef.current) return;
+    if (!connectedDevice || !secondaryDevice) {
+      setPlacementError('Connect both bands before starting.');
       return;
     }
-    const sharedCommand = config.command ? commandForDeviceSlot(config.command, 'primary') : null;
+    const config = WORKOUT_COMMANDS[pendingWorkout || selectedWorkout];
+    const slots = placementSlots(placement, placementSide);
+    if (!config || !slots) return;
+    startingRef.current = true;
+    repReviewRun.current += 1;
+    secondaryRepSamples.current.clear();
+    setPreparingBands(true);
+    setPlacementError('');
     try {
-      await sendWorkoutCommandToConnectedDevices({
-        primaryCommand: sharedCommand,
-        secondaryCommand: sharedCommand,
+      ['primary', 'secondary'].forEach((slot, index) => {
+        updateDeviceSetting(slot, 'limb', slots[index].limb);
+        updateDeviceSetting(slot, 'side', slots[index].side);
       });
-    } finally {
+      await sendWorkoutCommandToConnectedDevices({
+        primaryCommand: createCommand(DeviceCommands.start, {exerciseType: config.command[1], ...slots[0]}),
+        secondaryCommand: createCommand(DeviceCommands.start, {exerciseType: (config.secondaryCommand || config.command)[1], ...slots[1]}),
+      });
       closeReadyModal();
+    } catch (error) {
+      await Promise.allSettled([connectedDevice, secondaryDevice].map(device => sendCommand(createCommand(DeviceCommands.stop), device)));
+      setWorkoutPhase('idle');
+      setPlacementError('Could not start both bands. Check the connection and try again.');
+    } finally {
+      startingRef.current = false;
+      setPreparingBands(false);
     }
   };
   const sendCommand = async (custom = null, targetDevice = null, targetSlot = 'primary') => {
@@ -799,196 +837,6 @@ export default function WorkoutRunner({ route }) {
     }
     Keyboard.dismiss();
   };
-  useEffect(() => {
-    const reps = feedback.reps ?? 0;
-    const prevCount = prevRepsRef.current ?? 0;
-    if (reps > prevCount) {
-      const repsToAdd = reps - prevCount;
-      const latest = feedbackRef.current;
-      const vel = +(+latest.Velocity || 0).toFixed(2);
-      const tutVal = +(+latest.TUT || 0).toFixed(2);
-      const romVal = latest.ROM || 0;
-      const scoreVal = latest.Score || 0;
-      const weightVal = weightRef.current || 0;
-      const momentumVal = +(vel * weightVal).toFixed(2);
-      const workoutLabel = workoutRef.current;
-      const setNumber = latest.sets || 1;
-
-      const newSnapshots = [];
-      const newVelocities = [];
-      const newMomenta = [];
-      const newRows = [];
-
-      for (let i = 0; i < repsToAdd; i++) {
-        const repIndex = prevCount + i + 1;
-        const rowId = uuidv4();
-        const snapshot = {
-          repIndex,
-          ROM: romVal,
-          TUT: tutVal,
-          Velocity: vel,
-          Score: scoreVal,
-          Momentum: momentumVal,
-          setNo: setNumber,
-          workout: workoutLabel,
-          weight: weightVal,
-          rowId,
-        };
-        newSnapshots.push(snapshot);
-        newVelocities.push(vel);
-        newMomenta.push(momentumVal);
-        newRows.push({
-          id: rowId,
-          workout: workoutLabel,
-          setNo: String(setNumber),
-          weight: String(weightVal),
-          score: String(scoreVal),
-          rom: String(romVal),
-          tut: tutVal.toString(),
-          velocity: vel.toFixed(2),
-          momentum: momentumVal.toFixed(2),
-          persisted: false,
-        });
-        console.log('Rep momentum', { repIndex, momentum: momentumVal });
-        persistRepSnapshot(snapshot);
-      }
-
-      setRepSnapshots((prev) => [...prev, ...newSnapshots]);
-      setVelocityArray((prev) => [...prev, ...newVelocities]);
-      setForceArray((prev) => [...prev, ...newMomenta]);
-      setRows((prev) => [...prev, ...newRows]);
-      prevRepsRef.current = reps;
-    }
-  }, [feedback.reps, persistRepSnapshot]);
-
-  //  useEffect(() => {
-  //   const sets = feedback.sets;
-  //   if (sets < (prevSetsRef.current ?? 0)) {
-  //     prevSetsRef.current = sets;
-  //     return;
-  //   }
-  //   if (sets > 0 && sets !== prevSetsRef.current && repSnapshots.length > 0) {
-  //     const arr = [...repSnapshots];
-  //     const now = new Date();
-  //     const summaryObj = {
-  //       SetNumber: sets,
-  //       RepsCompleted: arr.length,
-  //       Score: +average(arr.map((r) => r.Score)).toFixed(2),
-  //       ScoreSeries: arr.map((r, index) => ({
-  //         key: `score-${index + 1}`,
-  //         label: `${index + 1}`,
-  //         value: Number(r.Score) || 0,
-  //       })),
-  //       Momentum: +sum(arr.map((r) => r.Momentum)).toFixed(2),
-  //       TUT: +average(arr.map((r) => r.TUT)).toFixed(2),
-  //       Velocity: +average(arr.map((r) => r.Velocity)).toFixed(2),
-  //       ROM: +average(arr.map((r) => r.ROM)).toFixed(2),
-  //       Date: now.toISOString().split('T')[0],
-  //       Time: now.toLocaleTimeString(),
-  //     };
-  //     const setNoValue = arr[0]?.setNo || sets || 1;
-  //     const workoutValue = arr[0]?.workout || workoutRef.current;
-  //     const weightValue = arr[0]?.weight ?? weightRef.current;
-  //     persistSet({ workout: workoutValue, setNo: setNoValue, weight: weightValue });
-  //     setSummary(summaryObj);
-  //     setSummaryModalVisible(true);
-  //     setRepSnapshots([]);
-  //     prevSetsRef.current = sets;
-  //     prevRepsRef.current = 0;
-  //   }
-  // }, [feedback.sets, repSnapshots, persistSet]);
-
-
-
-  useEffect(() => {
-    const sets = feedback.sets;
-    if (sets > 0 && sets !== prevSetsRef.current && repSnapshots.length > 0) {
-      const arr = [...repSnapshots];
-      const now = new Date();
-      const summaryObj = {
-        SetNumber: sets,
-        RepsCompleted: arr.length,
-        Score: +average(arr.map((r) => r.Score)).toFixed(2),
-        ScoreSeries: arr.map((r, index) => ({
-          key: `score-${index + 1}`,
-          label: `${index + 1}`,
-          value: Number(r.Score) || 0,
-        })),
-        Momentum: +sum(arr.map((r) => r.Momentum)).toFixed(2),
-        TUT: +average(arr.map((r) => r.TUT)).toFixed(2),
-        Velocity: +average(arr.map((r) => r.Velocity)).toFixed(2),
-        ROM: +average(arr.map((r) => r.ROM)).toFixed(2),
-        Date: now.toISOString().split('T')[0],
-        Time: now.toLocaleTimeString(),
-      };
-      const setNoValue = arr[0]?.setNo || sets || 1;
-      const workoutValue = arr[0]?.workout || workoutRef.current;
-      const weightValue = arr[0]?.weight ?? weightRef.current;
-      persistSet({ workout: workoutValue, setNo: setNoValue, weight: weightValue });
-      setSummary(summaryObj);
-      setSummaryModalVisible(true);
-      setRepSnapshots([]);
-      prevSetsRef.current = sets;
-      prevRepsRef.current = 0;
-    }
-  }, [feedback.sets, repSnapshots, persistSet]);
-  useEffect(() => {
-    let active = true;
-    const loadProfileWeight = async () => {
-      try {
-        const current = await getCurrentUser();
-        const user_id = current?.userId || current?.username;
-        if (!user_id) return;
-        const { data } = await client.graphql({
-          query: GET_USER_WEIGHT,
-          variables: { user_id },
-        });
-        const value = Number(data?.getUser?.current_weight);
-        if (active) {
-          setProfileWeight(Number.isFinite(value) ? value : null);
-        }
-      } catch (err) {
-        console.log('Fetch profile weight failed', err);
-      }
-    };
-    loadProfileWeight();
-    return () => {
-      active = false;
-    };
-  }, [client]);
-  useEffect(() => {
-    if (!BODYWEIGHT_WORKOUT_LABELS.has(selectedWorkout)) return;
-    if (!Number.isFinite(profileWeight)) return;
-    setWeight(profileWeight);
-  }, [profileWeight, selectedWorkout]);
-
-  useEffect(() => {
-    if (!connectedDevice && workoutPhase !== 'idle') {
-      setWorkoutPhase('idle');
-      setCountdownSeconds(COUNTDOWN_SECONDS);
-    }
-  }, [connectedDevice, workoutPhase]);
-
-  useEffect(() => {
-    if (workoutPhase !== 'countdown') return undefined;
-
-    if (!isUserStill) {
-      setCountdownSeconds(COUNTDOWN_SECONDS);
-      return undefined;
-    }
-
-    const timer = setTimeout(() => {
-      if (countdownSeconds <= 1) {
-        setCountdownSeconds(0);
-        setWorkoutPhase('active');
-        return;
-      }
-      setCountdownSeconds((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdownSeconds, isUserStill, workoutPhase]);
-
   const updateRow = (id, key, value) => {
     setRows((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)));
   };
@@ -1070,17 +918,20 @@ export default function WorkoutRunner({ route }) {
     if (sessionIdRef.current) {
       return sessionIdRef.current;
     }
-    const session_id = `${uuidv4()}-${Date.now()}`;
-    const workout_date = new Date().toISOString();
-    const workout_id = workoutPlan?.workout_id || null;
-    await client.graphql({
-      query: CREATE_SESSION,
-      variables: { input: { session_id, customer_id: customerId, workout_id, workout_date } },
-    });
-    sessionIdRef.current = session_id;
-    resetSessionMaps();
-    setCurrentSessionId(session_id);
-    return session_id;
+    if (sessionCreationRef.current) return sessionCreationRef.current;
+    sessionCreationRef.current = (async () => {
+      const session_id = `${uuidv4()}-${Date.now()}`;
+      await client.graphql({query: CREATE_SESSION, variables: {input: {
+        session_id, customer_id: customerId, workout_id: workoutPlan?.workout_id || null,
+        workout_date: new Date().toISOString(),
+      }}});
+      sessionIdRef.current = session_id;
+      resetSessionMaps();
+      setCurrentSessionId(session_id);
+      return session_id;
+    })();
+    try { return await sessionCreationRef.current; }
+    finally { sessionCreationRef.current = null; }
   }, [client, customerId, workoutPlan?.workout_id, resetSessionMaps]);
 
   const createSessionItemRecord = useCallback(
@@ -1139,7 +990,7 @@ export default function WorkoutRunner({ route }) {
         session_item_set_index,
         session_item_rep_index,
         rom: toInt(snapshot.ROM),
-        score: toInt(snapshot.Score),
+        score: snapshot.Score == null ? null : toInt(snapshot.Score),
         tut: toNumber(snapshot.TUT),
         velocity: toInt(snapshot.Velocity),
         momentum: toInt(snapshot.Momentum),
@@ -1189,26 +1040,222 @@ export default function WorkoutRunner({ route }) {
     [client, ensureSession]
   );
 
+  useEffect(() => {
+    const reps = feedback.reps ?? 0;
+    const prevCount = prevRepsRef.current ?? 0;
+    if (reps < prevCount) { prevRepsRef.current = reps; return; }
+    if (workoutPhase !== 'active') { prevRepsRef.current = reps; return; }
+    if (reps > prevCount) {
+      const repsToAdd = reps - prevCount;
+      const latest = feedbackRef.current;
+      const vel = +(+latest.Velocity || 0).toFixed(2);
+      const tutVal = +(+latest.TUT || 0).toFixed(2);
+      const romVal = latest.ROM || 0;
+      const scoreVal = latest.Score || 0;
+      const weightVal = weightRef.current || 0;
+      const momentumVal = +(vel * weightVal).toFixed(2);
+      const workoutLabel = workoutRef.current;
+      const setNumber = latest.sets || 1;
+
+      const exercise = exerciseMap[workoutLabel] || Object.values(exerciseMap).find(ex => ex?.name?.toLowerCase() === workoutLabel?.toLowerCase());
+      const type = WORKOUT_COMMANDS[workoutLabel]?.command?.[1];
+      const target1 = type <= 5 ? exercise?.target_rom_arm : exercise?.target_rom_leg;
+      const target2 = type <= 5 || type >= 11 ? exercise?.target_rom_arm : exercise?.target_rom_leg;
+      const target = averageBands(target1, target2);
+      const reviews = [];
+      const newSnapshots = [];
+      const newVelocities = [];
+      const newMomenta = [];
+      const newRows = [];
+
+      for (let i = 0; i < repsToAdd; i++) {
+        const repIndex = prevCount + i + 1;
+        const rowId = uuidv4();
+        const snapshot = {
+          repIndex,
+          ROM: romVal,
+          TUT: tutVal,
+          Velocity: vel,
+          Score: scoreVal,
+          Momentum: momentumVal,
+          setNo: setNumber,
+          workout: workoutLabel,
+          weight: weightVal,
+          rowId,
+        };
+        reviews.push({ band1Label: bandLabel(deviceSettings?.primary), band2Label: bandLabel(deviceSettings?.secondary), target1, target2, primaryMetrics: { rom: latest.ROM, tut: latest.TUT, velocity: latest.Velocity }, run: repReviewRun.current, id: rowId, workout: workoutLabel, setNo: setNumber, repIndex, primaryRom: repsToAdd === 1 ? latest.ROM : null, secondaryRom: null, rom: null, target, primaryAvailable: repsToAdd === 1, available: false });
+        newSnapshots.push(snapshot);
+        newVelocities.push(vel);
+        newMomenta.push(momentumVal);
+        newRows.push({
+          id: rowId,
+          workout: workoutLabel,
+          setNo: String(setNumber),
+          weight: String(weightVal),
+          score: null,
+          awaitingBands: true,
+          rom: String(romVal),
+          tut: tutVal.toString(),
+          velocity: vel.toFixed(2),
+          momentum: momentumVal.toFixed(2),
+          persisted: false,
+        });
+        console.log('Rep momentum', { repIndex, momentum: momentumVal });
+        pendingReviewSnapshots.current.set(rowId, snapshot);
+      }
+
+      setRepReviews(prev => [...prev, ...reviews]);
+      // Summary snapshots are added only after the matching second band arrives.
+      setVelocityArray((prev) => [...prev, ...newVelocities]);
+      setForceArray((prev) => [...prev, ...newMomenta]);
+      setRows((prev) => [...prev, ...newRows]);
+      prevRepsRef.current = reps;
+    }
+  }, [feedback.reps, persistRepSnapshot, workoutPhase, exerciseMap, deviceSettings]);
+
+  // Capture band 2 once at its rep notification; pair by exercise, set and rep.
+  // Re-run on either counter so notification arrival order does not matter.
+  useEffect(() => {
+    const count = secondaryFeedback.reps ?? 0;
+    if (workoutPhase !== 'active') {
+      secondaryReviewCount.current = count;
+      secondaryRepSamples.current.clear();
+      return;
+    }
+    const previous = secondaryReviewCount.current;
+    if (count < previous) secondaryReviewCount.current = count;
+    if (count > previous) {
+      const sample = secondaryFeedbackRef.current;
+      const key = `${repReviewRun.current}:${workoutRef.current}:${sample.sets || 1}:${count}`;
+      secondaryRepSamples.current.set(key, count - previous === 1 ? { rom: sample.ROM, tut: sample.TUT, velocity: sample.Velocity } : null);
+      secondaryReviewCount.current = count;
+    }
+    setRepReviews(items => items.map(item => {
+      if (item.available) return item;
+      const key = `${item.run}:${item.workout}:${item.setNo}:${item.repIndex}`;
+      if (!secondaryRepSamples.current.has(key)) return item;
+      const secondaryMetrics = secondaryRepSamples.current.get(key);
+      const secondaryRom = secondaryMetrics?.rom;
+      const rom = item.primaryAvailable ? averageBands(item.primaryRom, secondaryRom) : null;
+      return { ...item, secondaryMetrics, secondaryRom, rom, available: rom != null };
+    }));
+  }, [feedback.reps, secondaryFeedback.reps, workoutPhase]);
+
+  useEffect(() => {
+    for (const review of repReviews) {
+      if (!review.available || submittedReviews.current.has(review.id)) continue;
+      const original = pendingReviewSnapshots.current.get(review.id);
+      if (!original) continue;
+      submittedReviews.current.add(review.id);
+      const score = combinedRating(bandRating(review.primaryRom, review.target1), bandRating(review.secondaryRom, review.target2));
+      const velocity = meanMetric(review.primaryMetrics?.velocity, review.secondaryMetrics?.velocity);
+      const snapshot = { ...original, ROM: review.rom, Score: score,
+        TUT: meanMetric(review.primaryMetrics?.tut, review.secondaryMetrics?.tut),
+        Velocity: velocity, Momentum: velocity == null ? null : velocity * original.weight };
+      setRepSnapshots(previous => [...previous, snapshot]);
+      setRows(previous => previous.map(row => row.id === review.id ? { ...row, awaitingBands: false,
+        score, rom: snapshot.ROM, tut: snapshot.TUT, velocity: snapshot.Velocity, momentum: snapshot.Momentum } : row));
+      persistRepSnapshot(snapshot);
+      pendingReviewSnapshots.current.delete(review.id);
+    }
+  }, [repReviews, persistRepSnapshot]);
+
+  //  useEffect(() => {
+  //   const sets = feedback.sets;
+  //   if (sets < (prevSetsRef.current ?? 0)) {
+  //     prevSetsRef.current = sets;
+  //     return;
+  //   }
+  //   if (sets > 0 && sets !== prevSetsRef.current && repSnapshots.length > 0) {
+  //     const arr = [...repSnapshots];
+  //     const now = new Date();
+  //     const summaryObj = {
+  //       SetNumber: sets,
+  //       RepsCompleted: arr.length,
+  //       Score: arr.some(r => r.Score != null) ? +average(arr.filter(r => r.Score != null).map(r => r.Score)).toFixed(2) : null,
+  //       ScoreSeries: arr.filter(r => r.Score != null).map((r, index) => ({
+  //         key: `score-${index + 1}`,
+  //         label: `${index + 1}`,
+  //         value: Number(r.Score) || 0,
+  //       })),
+  //       Momentum: +sum(arr.map((r) => r.Momentum)).toFixed(2),
+  //       TUT: +average(arr.map((r) => r.TUT)).toFixed(2),
+  //       Velocity: +average(arr.map((r) => r.Velocity)).toFixed(2),
+  //       ROM: +average(arr.map((r) => r.ROM)).toFixed(2),
+  //       Date: now.toISOString().split('T')[0],
+  //       Time: now.toLocaleTimeString(),
+  //     };
+  //     const setNoValue = arr[0]?.setNo || sets || 1;
+  //     const workoutValue = arr[0]?.workout || workoutRef.current;
+  //     const weightValue = arr[0]?.weight ?? weightRef.current;
+  //     persistSet({ workout: workoutValue, setNo: setNoValue, weight: weightValue });
+  //     setSummary(summaryObj);
+  //     setSummaryModalVisible(true);
+  //     setRepSnapshots([]);
+  //     prevSetsRef.current = sets;
+  //     prevRepsRef.current = 0;
+  //   }
+  // }, [feedback.sets, repSnapshots, persistSet]);
+
+
+
+  useEffect(() => {
+    const sets = feedback.sets;
+    if (sets > 0 && sets !== prevSetsRef.current && repSnapshots.length > 0) {
+      const arr = [...repSnapshots];
+      const now = new Date();
+      const summaryObj = {
+        SetNumber: sets,
+        RepsCompleted: arr.length,
+        Score: arr.some(r => r.Score != null) ? +average(arr.filter(r => r.Score != null).map(r => r.Score)).toFixed(2) : null,
+        ScoreSeries: arr.filter(r => r.Score != null).map((r, index) => ({
+          key: `score-${index + 1}`,
+          label: `${index + 1}`,
+          value: Number(r.Score) || 0,
+        })),
+        Momentum: +sum(arr.map((r) => r.Momentum)).toFixed(2),
+        TUT: +average(arr.map((r) => r.TUT)).toFixed(2),
+        Velocity: +average(arr.map((r) => r.Velocity)).toFixed(2),
+        ROM: +average(arr.map((r) => r.ROM)).toFixed(2),
+        Date: now.toISOString().split('T')[0],
+        Time: now.toLocaleTimeString(),
+      };
+      const setNoValue = arr[0]?.setNo || sets || 1;
+      const workoutValue = arr[0]?.workout || workoutRef.current;
+      const weightValue = arr[0]?.weight ?? weightRef.current;
+      persistSet({ workout: workoutValue, setNo: setNoValue, weight: weightValue });
+      setSummary(summaryObj);
+      setSummaryModalVisible(true);
+      setRepSnapshots([]);
+      prevSetsRef.current = sets;
+      prevRepsRef.current = 0;
+    }
+  }, [feedback.sets, repSnapshots, persistSet]);
+
   const saveSession = async () => {
+    if (rows.some(row => row.awaitingBands)) {
+      Alert.alert('Incomplete band readings', 'Some reps do not have matching readings from both bands yet. Their combined results have not been saved.');
+      return false;
+    }
     const pendingRows = rows.filter((row) => !row.persisted);
     if (!rows.length) {
       Alert.alert('No data', 'No reps recorded yet.');
-      return;
+      return false;
     }
     if (!pendingRows.length) {
       Alert.alert('Synced', 'All reps have already been synced to the cloud.');
       setShowSummary(false);
-      return;
+      return true;
     }
     try {
       if (!customerId) {
         Alert.alert('Missing customer', 'No customer_id provided in navigation params.');
-        return;
+        return false;
       }
       const session_id = await ensureSession();
       if (!session_id) {
         Alert.alert('Unable to start session', 'Session could not be initialized.');
-        return;
+        return false;
       }
 
       const groups = {};
@@ -1239,7 +1286,7 @@ export default function WorkoutRunner({ route }) {
         groups[key].forEach((row, repIdx) => {
           const session_item_rep_index = repIdx + 1;
           const rom = toInt(row.rom);
-          const score = toInt(row.score);
+          const score = row.score == null ? null : toInt(row.score);
           const tut = toNumber(row.tut);
           const velocity = toInt(row.velocity);
           const momentum = toInt(row.momentum);
@@ -1268,6 +1315,7 @@ export default function WorkoutRunner({ route }) {
       Alert.alert('Saved', 'Session saved successfully.');
       setShowSummary(false);
       setRows((prev) => prev.map((row) => ({ ...row, persisted: true })));
+      return true;
     } catch (e) {
       console.log('Save session failed:', e);
       Alert.alert('Error', 'Failed to save the session. See console logs.');
@@ -1278,8 +1326,7 @@ export default function WorkoutRunner({ route }) {
     if (savingWorkout) return;
     try {
       setSavingWorkout(true);
-      await ensureSession();
-      await saveSession();
+      if (await saveSession()) navigation.navigate('Home');
     } finally {
       setSavingWorkout(false);
     }
@@ -1389,14 +1436,6 @@ export default function WorkoutRunner({ route }) {
         decimals: 2,
         info:
           'TUT (time under tension) measures how long your key muscles work per rep. Higher TUT means the muscle is working longer during that rep. It is a key indicator of how well you manage the weight being lifted.',
-      },
-      {
-        title: 'Score',
-        value: scoreValue,
-        display: scoreValue,
-        decimals: 0,
-        info:
-          'Score is an overall rating derived from the device metrics. It reflects exercise form, control of the weight, and quality of muscle activity during the rep.',
       },
     ]
       .filter(Boolean)
@@ -1562,6 +1601,8 @@ export default function WorkoutRunner({ route }) {
             </View>
           ) : null}
         </View>
+
+        <RepFeedbackCard key={activeWorkoutLabel} reps={repReviews.filter(rep => rep.workout === activeWorkoutLabel)} />
 
         {/* <View style={styles.metricsListWrap}>
           {renderMetricList('Device 1', feedback, !!connectedDevice)}
@@ -1795,6 +1836,8 @@ export default function WorkoutRunner({ route }) {
       keyboardVerticalOffset={64}
     >
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 200 }}>
+        <TutorialCard />
+        <DeviceInstructions />
         {renderHeader()}
         <View style={{ marginTop: 16 }}>
           <Button title="Complete Workout" onPress={() => setShowSummary(true)} />
@@ -1839,7 +1882,7 @@ export default function WorkoutRunner({ route }) {
               </Text>
             </View>
             <Text style={styles.countdownHint}>
-              Assume your starting position and stay still until the countdown finishes.
+              Hold still until the countdown reaches zero. Begin when your band buzzes.
             </Text>
             <View style={styles.countdownStatusRow}>
               <View
@@ -1883,24 +1926,10 @@ export default function WorkoutRunner({ route }) {
         </View>
       </Modal>
 
-      <Modal
-        visible={readyModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeReadyModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Get Ready</Text>
-            <Text style={{ textAlign: 'center', marginBottom: 20 }}>
-              Get into a ready position and prepare to perform {pendingWorkout || selectedWorkout}.
-            </Text>
-            <Button title="Start" onPress={startWorkoutCommand} />
-            <View style={{ height: 8 }} />
-            <Button title="Cancel" color="#666" onPress={closeReadyModal} />
-          </View>
-        </View>
-      </Modal>
+      <PlacementModal visible={readyModalVisible} exercise={pendingWorkout || selectedWorkout}
+        placement={placement} side={placementSide} onSideChange={setPlacementSide}
+        connected={areBothDevicesConnected} onConfirm={startWorkoutCommand}
+        onClose={closeReadyModal} busy={preparingBands} error={placementError} />
 
       <Modal
         visible={summaryModalVisible}
@@ -1936,7 +1965,7 @@ export default function WorkoutRunner({ route }) {
                       threshold70: true,
                       decimals: 2,
                     },
-                    { title: 'Score', value: summary.Score, display: summary.Score, decimals: 0 },
+                    { title: 'Combined score', value: summary.Score ?? 0, display: summary.Score ?? 'Not rated', decimals: 0 },
                   ]}
                   onInfo={handleInfo}
                 />
@@ -1963,7 +1992,7 @@ export default function WorkoutRunner({ route }) {
                   ['ROM', Math.round(summary.ROM)],
                   ['TUT', summary.TUT.toFixed(2)],
                   ['Momentum', Math.round(summary.Momentum)],
-                  ['Score', Math.round(summary.Score)],
+                  ['Combined score', summary.Score == null ? 'Not rated' : Math.round(summary.Score)],
                 ].map(([label, value]) => (
                   <View style={styles.statRow} key={label}>
                     <Text>{label}</Text>

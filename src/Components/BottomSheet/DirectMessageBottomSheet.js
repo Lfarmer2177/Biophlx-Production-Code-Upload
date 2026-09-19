@@ -51,7 +51,7 @@ const DirectMessageBottomSheet = ({ isVisible, onClose, sendTo, recipientName })
 
       const result = await MailComposer.composeAsync({
         recipients: [sendTo || 'support@biophlx.com'],
-        subject: `Biophlx Message: From ${firstName} ${lastName}`,
+        subject: `BIOPHLX Message: From ${firstName} ${lastName}`,
         body: emailBody,
         isHtml: true,
       });

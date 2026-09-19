@@ -1,3 +1,4 @@
+import { TutorialCard } from '../Components/band-setup/BandSetup';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
@@ -433,10 +434,9 @@ export default function HomeScreen({ route, navigation }) {
           setSelectedDate(recent);
           setMonthDate(new Date(recent));
           setLoadSelectedDate(recent);
-          buildMonthlyMuscleData(list, recent, range);
+
         }
-      } else if (list.length) {
-        buildMonthlyMuscleData(list, selectedDate, range);
+
       }
     } catch (err) {
       console.log('Fetch sessions failed', err);
@@ -444,7 +444,7 @@ export default function HomeScreen({ route, navigation }) {
     } finally {
       setSessionsLoading(false);
     }
-  }, [client, asList, normalizeDate, selectedDate, buildMonthlyMuscleData, range, fromClientList, clientData]);
+  }, [client, asList, selectedDate, fromClientList, clientData]);
 
   useEffect(() => {
     fetchSessions();
@@ -1016,6 +1016,7 @@ export default function HomeScreen({ route, navigation }) {
   return (
     <View style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
+        <TutorialCard />
         {fromClientList && (
           <View style={styles.topDesignContainer}>
             <View style={styles.actionRow}>

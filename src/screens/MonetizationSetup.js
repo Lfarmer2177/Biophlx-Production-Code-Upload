@@ -197,7 +197,7 @@ export default function MonetizationSetup({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Get paid through Biophlx</Text>
+      <Text style={styles.title}>Get paid through BIOPHLX</Text>
       
       {/* {trainer?.stripe_onboarded ? (
         <View style={styles.successContainer}>
@@ -207,7 +207,7 @@ export default function MonetizationSetup({ navigation }) {
       ) : ( */}
         <>
           <Text style={styles.body}>
-            Biophlx uses Stripe to securely handle payments and payouts.{'\n'}
+            BIOPHLX uses Stripe to securely handle payments and payouts.{'\n'}
             Funds are deposited directly to your bank.
           </Text>
           

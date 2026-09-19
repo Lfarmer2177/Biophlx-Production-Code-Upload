@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "biophlxAppTestAWS",
+    "name": "BIOPHLX",
     "slug": "biophlxAppTestAWS",
     "version": "2.0.1",
     "scheme": "biophlx",
@@ -33,8 +33,8 @@
         "NSCameraUsageDescription": "This app uses the camera to allow trainers to upload profile pictures and workout demonstrations.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library to allow trainers to upload profile pictures and workout demonstrations.",
         "NSMicrophoneUsageDescription": "This app uses the microphone when recording workout demonstration videos.",
-        "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to connect to Biophlx fitness equipment for real-time tracking.",
-        "NSBluetoothPeripheralUsageDescription": "This app uses Bluetooth to connect to Biophlx fitness equipment for real-time tracking."
+        "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to connect to BIOPHLX fitness equipment for real-time tracking.",
+        "NSBluetoothPeripheralUsageDescription": "This app uses Bluetooth to connect to BIOPHLX fitness equipment for real-time tracking."
       },
       "appleTeamId": "5F7CG99WV8"
     },

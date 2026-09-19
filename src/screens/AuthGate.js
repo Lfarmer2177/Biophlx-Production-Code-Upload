@@ -7,7 +7,7 @@ import {
   getCurrentUser,
   signOut,
   fetchAuthSession,
-  resetPassword,
+  resetPassword as requestPasswordReset,
   confirmResetPassword,
 } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
@@ -32,7 +32,7 @@ export default function AuthGate({ navigation }) {
   const [password, setPassword] = useState('');
   const [screen, setScreen] = useState('signin');
   const [confirmationCode, setConfirmationCode] = useState('');
-  const [newUsername, setNewUsername] = useState(''); 
+  const [newUsername, setNewUsername] = useState('');
   const [error, setError] = useState('');
   const [booting, setBooting] = useState(true);
   const [resetCode, setResetCode] = useState('');
@@ -99,7 +99,12 @@ export default function AuthGate({ navigation }) {
 
       await client.graphql({ query: createCustomerMutation, variables: { input: { customer_id: user_id, user_id } }, authMode: 'userPool' }).catch(() => console.log('Customer already exists'));
 
-      navigation.replace("ProfileSetup", { next: 'Home' });
+      const profile = await client.graphql({
+        query: `query ExistingProfile($user_id: ID!) { getUser(user_id: $user_id) { first_name last_name } }`,
+        variables: { user_id },
+      });
+      const complete = profile.data?.getUser?.first_name && profile.data?.getUser?.last_name;
+      navigation.replace(complete ? 'Home' : 'ProfileSetup', { next: 'Home' });
 
     } catch (err) {
       console.log("Sign in error:", err, JSON.stringify(err, null, 2));
@@ -116,7 +121,7 @@ export default function AuthGate({ navigation }) {
         setError('Enter your email to reset your password.');
         return;
       }
-      await resetPassword({ username });
+      await requestPasswordReset({ username });
       setError('');
       setScreen('reset');
     } catch (err) {
@@ -149,7 +154,7 @@ export default function AuthGate({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Biophlx Login</Text>
+      <Text style={styles.title}>BIOPHLX Login</Text>
       {!!error && <Text style={{ color: 'crimson', marginBottom: 10 }}>{error}</Text>}
 
       {screen === 'signin' && (

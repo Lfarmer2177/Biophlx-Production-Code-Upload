@@ -100,11 +100,11 @@ import * as WebBrowser from 'expo-web-browser';
 const CREATE_CHECKOUT_SESSION = /* GraphQL */ `
   mutation CreateCheckoutSession($trainer_id: ID!, $trainer_user_id: ID!, $price: Float!, $product_name: String!, $product_id: ID!, $product_type: String!, $user_id: ID!) {
     createStripeCheckout(
-      trainer_id: $trainer_id, 
+      trainer_id: $trainer_id,
       trainer_user_id: $trainer_user_id,
-      price: $price, 
-      product_name: $product_name, 
-      product_id: $product_id, 
+      price: $price,
+      product_name: $product_name,
+      product_id: $product_id,
       product_type: $product_type,
       user_id: $user_id
     ) {
@@ -250,19 +250,19 @@ export default function TrainerProfile({ route, navigation }) {
       const current = await getCurrentUser();
       const buyer_id = current?.userId || current?.username;
       setCurrentUserId(buyer_id);
-      
+
       if (buyer_id) {
         const { data: permData } = await client.graphql({
           query: listPermissionsByUser,
-          variables: { 
+          variables: {
             user_id: buyer_id,
             limit: 100
           }
         });
-        
+
         const perms = permData?.listPermissionsByUser?.items || [];
         console.log('TrainerProfile: Found permissions:', perms.length);
-        
+
         const ownedIds = new Set();
         perms.forEach(p => {
           const resId = unwrapString(p.resource_id);
@@ -271,7 +271,7 @@ export default function TrainerProfile({ route, navigation }) {
             ownedIds.add(resId);
           }
         });
-        
+
         setPurchasedProductIds(ownedIds);
       }
     } catch (permErr) {
@@ -319,7 +319,7 @@ export default function TrainerProfile({ route, navigation }) {
       // 3. Redirect to Stripe
       if (url) {
         console.log('TrainerProfile: Opening Stripe URL in-app browser:', url);
-        
+
         // Using WebBrowser to keep the user inside the app
         const result = await WebBrowser.openBrowserAsync(url, {
           dismissButtonStyle: 'close',
@@ -333,8 +333,8 @@ export default function TrainerProfile({ route, navigation }) {
 
         if (result.type === 'cancel' || result.type === 'dismiss') {
           Alert.alert(
-            'Purchase Completed',
-            'Thank you for your purchase! Your content will be available in your library shortly.',
+            'Checkout closed',
+            'Your library updates after payment is confirmed. If you cancelled checkout, no purchase was completed.',
             [{ text: 'OK' }]
           );
         }
@@ -378,11 +378,11 @@ export default function TrainerProfile({ route, navigation }) {
     async (service) => {
       let total = 0;
       const sId = unwrapString(service.service_id);
-      
+
       // Count direct workouts
       const workoutIds = unwrapList(service.workout_ids);
       console.log(`TrainerProfile: Service ${sId} has ${workoutIds.length} direct workout_ids`);
-      
+
       for (const wid of workoutIds) {
         try {
           const { data } = await client.graphql({
@@ -400,11 +400,11 @@ export default function TrainerProfile({ route, navigation }) {
           console.log(`TrainerProfile: Failed to list items for workout ${wid}`, err);
         }
       }
-      
+
       // Count workouts from included workout products
       const productIds = unwrapList(service.workout_products);
       console.log(`TrainerProfile: Service ${sId} has ${productIds.length} workout_products`);
-      
+
       for (const pid of productIds) {
         try {
           const { data } = await client.graphql({
@@ -418,7 +418,7 @@ export default function TrainerProfile({ route, navigation }) {
           }
           const wpWorkouts = unwrapList(wp?.workout_id);
           console.log(`TrainerProfile: Workout product ${pid} has ${wpWorkouts.length} workouts`);
-          
+
           for (const wid of wpWorkouts) {
             try {
               const { data } = await client.graphql({
@@ -501,7 +501,7 @@ export default function TrainerProfile({ route, navigation }) {
           const raw = data?.listVirtualTrainingServicesByTrainer;
           const items = Array.isArray(raw) ? raw : (raw?.items || []);
           console.log('TrainerProfile: listVirtualTrainingServicesByTrainer items:', JSON.stringify(items, null, 2));
-          
+
           const enriched = [];
           for (const svc of items) {
             const exCount = await countExercisesForService(svc).catch((err) => {
@@ -566,7 +566,7 @@ export default function TrainerProfile({ route, navigation }) {
     const duration = unwrapString(item.duration_weeks);
     const price = unwrapString(item.price);
     const isPurchased = purchasedProductIds.has(itemId);
-    
+
     const workoutIds = unwrapList(item.workout_ids);
     const workoutProducts = unwrapList(item.workout_products);
 
@@ -622,7 +622,7 @@ export default function TrainerProfile({ route, navigation }) {
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.headerTopRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.profileContainer}
                 onPress={pickImage}
                 disabled={!isOwnProfile || uploading}
@@ -653,7 +653,7 @@ export default function TrainerProfile({ route, navigation }) {
                 </Text>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.messageIconButton}
                 onPress={() => setIsMessageSheetVisible(true)}
               >
