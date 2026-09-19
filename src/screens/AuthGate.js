@@ -1,3 +1,5 @@
+import BrandButton from '../Components/Button/BrandButton';
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import {
@@ -27,6 +29,9 @@ mutation CreateCustomer($input: CreateCustomerInput!) {
 }`;
 
 export default function AuthGate({ navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -146,92 +151,94 @@ export default function AuthGate({ navigation }) {
 
   if (booting) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Loading...</Text>
+      <View style={brandTheme.style(styles.container)}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>BIOPHLX Login</Text>
-      {!!error && <Text style={{ color: 'crimson', marginBottom: 10 }}>{error}</Text>}
+    <View style={brandTheme.style(styles.container)}>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>BIO<Text style={{color:brandTheme.colors.accent}}>PHLX</Text></Text>
+      <Text style={{color:brandTheme.colors.text,fontSize:24,fontWeight:'700',marginBottom:6}}>Ready to train</Text>
+      <Text style={{color:brandTheme.colors.muted,marginBottom:24}}>Sign in to your training.</Text>
+      {!!error && <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ color: 'crimson', marginBottom: 10 })]}>{error}</Text>}
 
       {screen === 'signin' && (
         <>
-          <TextInput style={styles.input}
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent} style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
             placeholder="Email"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none" />
 
-          <TextInput style={styles.input}
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent} style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
             placeholder="Password"
             secureTextEntry
             value={password}
             onChangeText={setPassword} />
 
-          <Button title="Sign In" onPress={handleSignIn} />
-          <View style={{ marginTop: 20 }}>
-            <Button title="Create Account" onPress={() => setScreen('signup')} />
+          <BrandButton color={brandTheme.colors.primary} title="Sign In" onPress={handleSignIn} />
+          <View style={brandTheme.style({ marginTop: 20 })}>
+            <BrandButton color={brandTheme.colors.primary} variant="secondary" title="Create Account" onPress={() => setScreen('signup')} />
           </View>
-          <View style={{ marginTop: 10 }}>
-            <Button title="Forgot Password" onPress={handleForgot} />
+          <View style={brandTheme.style({ marginTop: 10 })}>
+            <BrandButton color={brandTheme.colors.primary} variant="secondary" title="Forgot Password" onPress={handleForgot} />
           </View>
-          <View style={{ marginTop: 10 }}>
-            <Button title="Sign Out" onPress={async () => { try { await signOut(); setError(''); } catch (e) { setError(e?.message || String(e)); } }} />
+          <View style={brandTheme.style({ marginTop: 10 })}>
+            <BrandButton color={brandTheme.colors.primary} variant="secondary" title="Sign Out" onPress={async () => { try { await signOut(); setError(''); } catch (e) { setError(e?.message || String(e)); } }} />
           </View>
         </>
       )}
 
       {screen === 'signup' && (
         <>
-          <TextInput style={styles.input}
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent} style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
             placeholder="Email"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none" />
 
-          <TextInput style={styles.input}
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent} style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
             placeholder="Password"
             secureTextEntry
             value={password}
             onChangeText={setPassword} />
 
-          <Button title="Sign Up" onPress={handleSignUp} />
+          <BrandButton color={brandTheme.colors.primary} title="Sign Up" onPress={handleSignUp} />
         </>
       )}
 
       {screen === 'confirm' && (
         <>
-          <TextInput style={styles.input}
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent} style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
             placeholder="Confirmation Code"
             value={confirmationCode}
             onChangeText={setConfirmationCode} />
 
-          <Button title="Confirm" onPress={handleConfirm} />
+          <BrandButton color={brandTheme.colors.primary} title="Confirm" onPress={handleConfirm} />
         </>
       )}
 
       {screen === 'reset' && (
         <>
-          <TextInput
-            style={styles.input}
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+            style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
             placeholder="Code"
             value={resetCode}
             onChangeText={setResetCode}
             autoCapitalize="none"
           />
-          <TextInput
-            style={styles.input}
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+            style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
             placeholder="New Password"
             secureTextEntry
             value={resetPassword}
             onChangeText={setResetPassword}
           />
-          <Button title="Set New Password" onPress={handleReset} />
-          <View style={{ marginTop: 10 }}>
-            <Button title="Back to Sign In" onPress={() => setScreen('signin')} />
+          <BrandButton color={brandTheme.colors.primary} title="Set New Password" onPress={handleReset} />
+          <View style={brandTheme.style({ marginTop: 10 })}>
+            <BrandButton color={brandTheme.colors.primary} variant="secondary" title="Back to Sign In" onPress={() => setScreen('signin')} />
           </View>
         </>
       )}
@@ -239,7 +246,7 @@ export default function AuthGate({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -249,7 +256,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    marginBottom: 30,
+    marginBottom: 16,
     fontWeight: 'bold'
   },
   input: {
@@ -257,6 +264,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginVertical: 8,
     borderWidth: 1,
-    borderRadius: 8
+    borderRadius: 12
   }
 });

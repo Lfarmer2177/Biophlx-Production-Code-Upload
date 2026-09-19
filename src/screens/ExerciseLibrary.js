@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -44,6 +45,9 @@ const PLACEHOLDER =
   'https://dummyimage.com/320x200/b0b0b0/ffffff.png&text=Exercise';
 
 export default function ExerciseLibrary() {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(
     () =>
       generateClient({
@@ -148,18 +152,18 @@ export default function ExerciseLibrary() {
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1c6ef2" />
-        <Text style={styles.helper}>Fetching exercises...</Text>
+      <View style={brandTheme.style(styles.center)}>
+        <ActivityIndicator size="large" color={brandTheme.color("#1c6ef2")} />
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.helper)]}>Fetching exercises...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={brandTheme.style(styles.screen)}>
       {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={brandTheme.style(styles.errorBanner)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.errorText)]}>{error}</Text>
         </View>
       ) : null}
       <FlatList
@@ -172,61 +176,61 @@ export default function ExerciseLibrary() {
           const isExpanded = expandedId === item.exercise_id;
           return (
             <TouchableOpacity
-              style={[styles.rowCard, isExpanded && styles.selectedRow]}
+              style={brandTheme.style([styles.rowCard, isExpanded && styles.selectedRow])}
               onPress={() => {
                 const nextId = isExpanded ? null : item.exercise_id;
                 setExpandedId(nextId);
                 if (nextId) ensureExerciseDetails(nextId);
               }}
             >
-              <Image source={{ uri: thumb }} style={styles.thumbnail} resizeMode="cover" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.exerciseId}>{unwrapString(item.exercise_id)}</Text>
-                {item.name ? <Text style={styles.name}>{item.name}</Text> : null}
-                <Text style={styles.categoryChip}>{item.category || 'Unknown'}</Text>
+              <Image source={{ uri: thumb }} style={brandTheme.style(styles.thumbnail)} resizeMode="cover" />
+              <View style={brandTheme.style({ flex: 1 })}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.exerciseId)]}>{unwrapString(item.exercise_id)}</Text>
+                {item.name ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.name)]}>{item.name}</Text> : null}
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.categoryChip)]}>{item.category || 'Unknown'}</Text>
                 {isExpanded ? (
                   detail ? (
-                    <View style={styles.expandedSection}>
+                    <View style={brandTheme.style(styles.expandedSection)}>
                       <Image
                         source={{ uri: detail.exercise_image || thumb || PLACEHOLDER }}
-                        style={styles.expandedImage}
+                        style={brandTheme.style(styles.expandedImage)}
                         resizeMode="contain"
                       />
-                      <Text style={styles.detailHeading}>Muscle Groups</Text>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.detailHeading)]}>Muscle Groups</Text>
                       {muscles.length ? (
                         muscles.map((entry, idx) => (
-                          <Text key={`${entry.name}-${idx}`} style={styles.detailText}>
+                          <Text key={`${entry.name}-${idx}`} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.detailText)]}>
                             {entry.value !== null ? `${entry.name}: ${entry.value.toFixed(1)}%` : entry.name}
                           </Text>
                         ))
                       ) : (
-                        <Text style={styles.muted}>No muscle data provided.</Text>
+                        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No muscle data provided.</Text>
                       )}
 
-                      <Text style={[styles.detailHeading, { marginTop: 6 }]}>Instructions</Text>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.detailHeading, { marginTop: 6 }])]}>Instructions</Text>
                       {toArray(detail.instructions).length ? (
                         toArray(detail.instructions).map((entry, idx) => (
-                          <Text key={idx} style={styles.detailText}>
+                          <Text key={idx} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.detailText)]}>
                             {idx + 1}. {entry}
                           </Text>
                         ))
                       ) : (
-                        <Text style={styles.muted}>No instructions provided.</Text>
+                        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No instructions provided.</Text>
                       )}
                     </View>
                   ) : (
-                    <Text style={styles.musclePreviewMuted}>Loading details...</Text>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.musclePreviewMuted)]}>Loading details...</Text>
                   )
                 ) : (
-                  <Text style={styles.musclePreviewMuted}>Tap to expand</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.musclePreviewMuted)]}>Tap to expand</Text>
                 )}
               </View>
             </TouchableOpacity>
           );
         }}
         ListEmptyComponent={
-          <View style={styles.center}>
-            <Text>No exercises found.</Text>
+          <View style={brandTheme.style(styles.center)}>
+            <Text style={{color:brandTheme.colors.text}}>No exercises found.</Text>
           </View>
         }
         refreshControl={
@@ -315,7 +319,7 @@ const normalizeExerciseDetail = (raw) => {
   };
 };
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#f5f5f5',

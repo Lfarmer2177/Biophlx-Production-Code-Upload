@@ -1,8 +1,12 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect } from 'react';
 import { View, StyleSheet, PermissionsAndroid, Platform } from 'react-native';
 import { Authenticator } from '@aws-amplify/ui-react-native';
 
 const AuthScreen = () => {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   useEffect(() => {
     const requestBlePermissions = async () => {
       if (Platform.OS === 'android') {
@@ -22,7 +26,7 @@ const AuthScreen = () => {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={brandTheme.style(styles.container)}>
       <Authenticator />
     </View>
   );
@@ -30,7 +34,7 @@ const AuthScreen = () => {
 
 export default AuthScreen;
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',

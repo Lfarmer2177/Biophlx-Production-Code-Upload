@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../../Theme/BIOPHLXTheme';
 import React, { useRef, useEffect } from 'react';
 import { View, TextInput, StyleSheet, Text, Alert, TouchableOpacity } from 'react-native';
 import * as MailComposer from 'expo-mail-composer';
@@ -7,6 +8,9 @@ import Colors from '../../Theme/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
 const DirectMessageBottomSheet = ({ isVisible, onClose, sendTo, recipientName }) => {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const bottomSheetRef = useRef(null);
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
@@ -79,6 +83,8 @@ const DirectMessageBottomSheet = ({ isVisible, onClose, sendTo, recipientName })
 
   return (
     <BottomSheet
+      backgroundStyle={{backgroundColor:brandTheme.colors.surface}}
+      handleIndicatorStyle={{backgroundColor:brandTheme.colors.muted}}
       ref={bottomSheetRef}
       index={isVisible ? 0 : -1}
       snapPoints={['95%']}
@@ -87,67 +93,67 @@ const DirectMessageBottomSheet = ({ isVisible, onClose, sendTo, recipientName })
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: Colors.APP_RED }}
     >
-      <BottomSheetView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Get in Touch</Text>
+      <BottomSheetView style={brandTheme.style(styles.container)}>
+        <View style={brandTheme.style(styles.header)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.headerTitle)]}>Get in Touch</Text>
           {recipientName && (
-            <Text style={styles.recipientSub}>with <Text style={styles.nameHighlight}>{recipientName}</Text></Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.recipientSub)]}>with <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.nameHighlight)]}>{recipientName}</Text></Text>
           )}
         </View>
 
-        <View style={styles.form}>
-          <View style={styles.row}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>First Name</Text>
-              <TextInput 
-                style={styles.input} 
-                value={firstName} 
+        <View style={brandTheme.style(styles.form)}>
+          <View style={brandTheme.style(styles.row)}>
+            <View style={brandTheme.style(styles.inputGroup)}>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>First Name</Text>
+              <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+                style={brandTheme.style(styles.input)}
+                value={firstName}
                 onChangeText={setFirstName}
                 placeholder="John"
               />
             </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Last Name</Text>
-              <TextInput 
-                style={styles.input} 
-                value={lastName} 
+            <View style={brandTheme.style(styles.inputGroup)}>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Last Name</Text>
+              <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+                style={brandTheme.style(styles.input)}
+                value={lastName}
                 onChangeText={setLastName}
                 placeholder="Doe"
               />
             </View>
           </View>
 
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput 
-            style={styles.input} 
-            value={email} 
-            onChangeText={setEmail} 
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Email Address</Text>
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+            style={brandTheme.style(styles.input)}
+            value={email}
+            onChangeText={setEmail}
             keyboardType="email-address"
             placeholder="john.doe@example.com"
             autoCapitalize="none"
           />
 
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput 
-            style={styles.input} 
-            value={phone} 
-            onChangeText={setPhone} 
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Phone Number</Text>
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+            style={brandTheme.style(styles.input)}
+            value={phone}
+            onChangeText={setPhone}
             keyboardType="phone-pad"
             placeholder="+1 (555) 000-0000"
           />
 
-          <Text style={styles.label}>Message</Text>
-          <TextInput 
-            style={styles.textArea} 
-            value={message} 
-            onChangeText={setMessage} 
-            multiline 
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Message</Text>
+          <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+            style={brandTheme.style(styles.textArea)}
+            value={message}
+            onChangeText={setMessage}
+            multiline
             numberOfLines={4}
             placeholder="Type your message here..."
             textAlignVertical="top"
           />
 
-          <View style={styles.footerStyle}>
+          <View style={brandTheme.style(styles.footerStyle)}>
             <CustomButton
               title={'Cancel'}
               buttonStyle={styles.cancelButton}
@@ -168,8 +174,8 @@ const DirectMessageBottomSheet = ({ isVisible, onClose, sendTo, recipientName })
   );
 };
 
-const styles = StyleSheet.create({
-  container: { 
+const baseStyles = StyleSheet.create({
+  container: {
     padding: 24,
     flex: 1,
   },
@@ -202,28 +208,28 @@ const styles = StyleSheet.create({
   inputGroup: {
     flex: 1,
   },
-  label: { 
-    fontSize: 14, 
-    fontWeight: '600', 
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.APP_BLACK,
     marginBottom: 8,
     marginTop: 12,
   },
-  input: { 
-    height: 48, 
-    borderColor: '#E2E8F0', 
-    borderWidth: 1, 
-    borderRadius: 12, 
+  input: {
+    height: 48,
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: 12,
     paddingHorizontal: 16,
     backgroundColor: '#F8FAFC',
     fontSize: 16,
   },
-  textArea: { 
-    height: 120, 
-    borderColor: '#E2E8F0', 
-    borderWidth: 1, 
-    borderRadius: 12, 
-    paddingHorizontal: 16, 
+  textArea: {
+    height: 120,
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     marginTop: 8,
     backgroundColor: '#F8FAFC',

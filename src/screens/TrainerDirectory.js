@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { generateClient } from 'aws-amplify/api';
@@ -24,6 +25,9 @@ const GET_USER = /* GraphQL */ `
 `;
 
 export default function TrainerDirectory({ navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,25 +78,25 @@ export default function TrainerDirectory({ navigation }) {
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={brandTheme.style(styles.card)}
       onPress={() => navigation.navigate('TrainerProfile', { trainer_id: item.trainer_id, user_id: item.user_id })}
     >
-      <Text style={styles.title}>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>
         {item?.user?.first_name || ''} {item?.user?.last_name || ''}
       </Text>
-      <Text style={styles.subtitle}>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.subtitle)]}>
         {item?.user?.city || ''}{item?.user?.city && item?.user?.state ? ', ' : ''}{item?.user?.state || ''}
       </Text>
-      <Text style={styles.meta}>Focus: {item.training_focus || 'N/A'}</Text>
-      <Text style={styles.bio} numberOfLines={2}>{item?.user?.bio || 'No bio provided.'}</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Focus: {item.training_focus || 'N/A'}</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.bio)]} numberOfLines={2}>{item?.user?.bio || 'No bio provided.'}</Text>
     </TouchableOpacity>
   );
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.center}>
+      <View style={brandTheme.style(styles.center)}>
         <ActivityIndicator />
-        <Text>Loading trainers...</Text>
+        <Text style={{color:brandTheme.colors.text}}>Loading trainers...</Text>
       </View>
     );
   }
@@ -104,12 +108,12 @@ export default function TrainerDirectory({ navigation }) {
       renderItem={renderItem}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
       contentContainerStyle={trainers.length ? styles.list : styles.center}
-      ListEmptyComponent={<Text>No trainers found.</Text>}
+      ListEmptyComponent={<Text style={{color:brandTheme.colors.text}}>No trainers found.</Text>}
     />
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   list: {
     padding: 16,
     gap: 12,

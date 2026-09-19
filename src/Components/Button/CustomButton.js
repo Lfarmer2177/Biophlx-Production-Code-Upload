@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../../Theme/BIOPHLXTheme';
 // CustomButton.js
 
 import React from 'react';
@@ -5,17 +6,20 @@ import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Colors from '../../Theme/Colors';
 
 const CustomButton = ({ title, onPress, buttonStyle, textStyle }) => {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   return (
     <TouchableOpacity
-      style={[styles.button, buttonStyle]}
+      style={brandTheme.style([styles.button, buttonStyle])}
       onPress={onPress}
     >
-      <Text style={[styles.text, textStyle]}>{title}</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.text, textStyle])]}>{title}</Text>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   button: {
     backgroundColor: Colors.APP_WHITE, // Example background color
     paddingVertical: 12,

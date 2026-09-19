@@ -1,3 +1,5 @@
+import BrandButton from '../Components/Button/BrandButton';
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Button, Alert, ActivityIndicator, Linking, AppState } from 'react-native';
 import { generateClient } from 'aws-amplify/api';
@@ -18,12 +20,12 @@ const SETUP_STRIPE_ONBOARDING = /* GraphQL */ `
 const GET_TRAINER_BY_USER = /* GraphQL */ `
   query ListTrainers($user_id: ID!) {
     listTrainers(filter: { user_id: { eq: $user_id } }, limit: 1) {
-      items { 
-        trainer_id 
+      items {
+        trainer_id
         user_id
-        stripe_account_id 
-        stripe_payouts_enabled 
-        stripe_onboarded 
+        stripe_account_id
+        stripe_payouts_enabled
+        stripe_onboarded
       }
     }
   }
@@ -44,6 +46,9 @@ const LIST_TRAINERS_SCAN = /* GraphQL */ `
 `;
 
 export default function MonetizationSetup({ navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,9 +83,9 @@ export default function MonetizationSetup({ navigation }) {
       const user = await getCurrentUser();
       const userId = user.userId;
       const username = user.username;
-      
+
       console.log('MonetizationSetup: fetching trainer for userId:', userId, 'username:', username);
-      
+
       let trainerData = null;
 
       // Try searching by userId first
@@ -103,7 +108,7 @@ export default function MonetizationSetup({ navigation }) {
         let items = res?.data?.listTrainers?.items || [];
         trainerData = items.find(item => item.user_id === username);
       }
-      
+
       // Fallback: If still not found, try a shallow scan and check both
       if (!trainerData) {
         console.log('MonetizationSetup: Primary lookups failed, trying fallback scan...');
@@ -114,20 +119,20 @@ export default function MonetizationSetup({ navigation }) {
         const scanItems = scanRes?.data?.listTrainers?.items || [];
         trainerData = scanItems.find(item => item.user_id === userId || item.user_id === username) || null;
       }
-      
+
       console.log('MonetizationSetup: trainer data result:', trainerData);
       setTrainer(trainerData);
-      
+
       if (!trainerData) {
         console.warn('MonetizationSetup: No trainer record found for user:', { userId, username });
       } else {
         console.log('MonetizationSetup: Successfully found trainer_id:', trainerData.trainer_id);
       }
-      
+
       if (trainerData?.stripe_onboarded && !isSilent) {
         Alert.alert('Success', 'Your payments are now fully active!');
       }
-    } catch (err) { 
+    } catch (err) {
       console.error('Failed to fetch trainer:', err);
     } finally {
       if (!isSilent) setRefreshing(false);
@@ -138,7 +143,7 @@ export default function MonetizationSetup({ navigation }) {
     setLoading(true);
     try {
       const user = await getCurrentUser();
-      
+
       if (!trainer) {
         Alert.alert('Error', 'Trainer profile not found.');
         return;
@@ -155,7 +160,7 @@ export default function MonetizationSetup({ navigation }) {
       console.log('Stripe Onboarding Response:', response);
 
       const setupData = response.data?.setupStripeOnboarding;
-      
+
       if (!setupData) {
         throw new Error('No response from setupStripeOnboarding.');
       }
@@ -167,7 +172,7 @@ export default function MonetizationSetup({ navigation }) {
       }
 
       const { onboarding_url, error } = setupData;
-      
+
       if (error) throw new Error(error);
 
       if (onboarding_url) {
@@ -196,9 +201,9 @@ export default function MonetizationSetup({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Get paid through BIOPHLX</Text>
-      
+    <View style={brandTheme.style(styles.container)}>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Get paid through BIOPHLX</Text>
+
       {/* {trainer?.stripe_onboarded ? (
         <View style={styles.successContainer}>
           <Text style={styles.successText}>✅ Your payments are active!</Text>
@@ -206,23 +211,23 @@ export default function MonetizationSetup({ navigation }) {
         </View>
       ) : ( */}
         <>
-          <Text style={styles.body}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.body)]}>
             BIOPHLX uses Stripe to securely handle payments and payouts.{'\n'}
             Funds are deposited directly to your bank.
           </Text>
-          
+
           {(loading || refreshing) ? (
-            <ActivityIndicator size="large" color="#0000ff" />
+            <ActivityIndicator size="large" color={brandTheme.color("#0000ff")} />
           ) : (
-            <View style={styles.buttonGroup}>
-              <Button
+            <View style={brandTheme.style(styles.buttonGroup)}>
+              <BrandButton color={brandTheme.colors.primary}
                 title="Enable Payouts"
                 onPress={handleEnablePayouts}
               />
-              {/* 
+              {/*
               {trainer?.stripe_account_id && (
                 <View style={{ marginTop: 12 }}>
-                  <Button title="Refresh Status" onPress={fetchTrainerStatus} color="#666" />
+                  <BrandButton title="Refresh Status" onPress={fetchTrainerStatus} color="#666" />
                 </View>
               )}
               */}
@@ -230,14 +235,14 @@ export default function MonetizationSetup({ navigation }) {
           )}
         </>
      {/* )} */}
-      
-      <View style={{ height: 24 }} />
-      <Button title="Back to Home" onPress={goHome} />
+
+      <View style={brandTheme.style({ height: 24 })} />
+      <BrandButton color={brandTheme.colors.primary} title="Back to Home" onPress={goHome} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,

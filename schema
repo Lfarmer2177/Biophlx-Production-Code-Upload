@@ -23,6 +23,7 @@ input CreateSessionItemInput {
 }
 
 input CreateSessionItemRepInput {
+  band_metrics: AWSJSON
 	session_id: ID!
 	session_item_index: Int!
 	session_item_set_index: Int!
@@ -200,6 +201,7 @@ type SessionItem {
 }
 
 type SessionItemRep {
+  band_metrics: AWSJSON
 	session_id: ID!
 	session_item_index: Int!
 	session_item_set_index: Int!

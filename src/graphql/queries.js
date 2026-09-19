@@ -118,7 +118,8 @@ export const listSessionItemRepsQuery = /* GraphQL */ `
         velocity
         momentum
         score
-        rom
+        band_metrics
+      rom
         created_at
         updated_at
       }

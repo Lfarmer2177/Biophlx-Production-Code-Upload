@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, TextInput, SafeAreaView, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -30,6 +31,9 @@ const client = generateClient({ authMode: 'userPool' });
 // DUMMY_CLIENTS removed for production logic
 
 export default function ClientListScreen({ route }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
     const navigation = useNavigation();
     const trainerIdFromRoute = route?.params?.trainer_id;
     const [searchQuery, setSearchQuery] = useState('');
@@ -54,13 +58,13 @@ export default function ClientListScreen({ route }) {
                     query: listTrainers,
                     variables: { filter: { user_id: { eq: current.userId } }, limit: 500 }
                 });
-                
+
                 console.log("Raw Trainer Query Result:", JSON.stringify(trainerRes.data.listTrainers.items, null, 2));
-                
+
                 // Reverted to original logic
                 trainerId = trainerRes.data.listTrainers.items[0]?.trainer_id;
             }
-            
+
             console.log("Resolved Trainer ID:", trainerId);
 
             if (!trainerId) {
@@ -74,7 +78,7 @@ export default function ClientListScreen({ route }) {
                 variables: { trainer_id: trainerId }
             });
             console.log("Total Permissions count:", permRes.data.listPermissionsByTrainer.items.length);
-            
+
             // Only show clients who purchased a 'service'
             const perms = permRes.data.listPermissionsByTrainer.items.filter(p => p.product_type === 'service');
             console.log("Virtual Training Clients count:", perms.length);
@@ -93,16 +97,16 @@ export default function ClientListScreen({ route }) {
                         client.graphql({ query: getUser, variables: { user_id: perm.user_id } }),
                         client.graphql({ query: listSessionsByCustomer, variables: { customer_id: perm.user_id, limit: 100 } })
                     ]);
-                    
+
                     const u = userRes.data.getUser;
-                    
+
                     // Added fallback to handle both direct array and connection (items) formats
                     const sessData = sessRes.data.listSessionsByCustomer;
                     const sessions = sessData?.items || sessData || [];
-                    
+
                     // Match the service from our bulk fetch
                     const service = allServices.find(s => s.service_id === perm.resource_id || s.stripe_product_id === perm.resource_id);
-                    
+
                     console.log(`Fetched Data for Client ${perm.user_id}:`);
                     console.log(`- User age:`, u?.age);
                     console.log(`- Sessions found:`, sessions.length);
@@ -144,7 +148,7 @@ export default function ClientListScreen({ route }) {
     }
 
     useEffect(() => {
-        const filtered = clients.filter(c => 
+        const filtered = clients.filter(c =>
             c.Demographic.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
         setFilteredClients(filtered);
@@ -158,8 +162,8 @@ export default function ClientListScreen({ route }) {
     };
 
     const renderItem = ({ item }) => (
-        <UserCardItem 
-            item={item} 
+        <UserCardItem
+            item={item}
             activeUserData={{ permissions }}
             permissionOnPress={() => handlePermissionToggle(item.id)}
             onPress={() => navigation.navigate('Home', { fromClientList: true, clientData: item })}
@@ -167,38 +171,38 @@ export default function ClientListScreen({ route }) {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView 
+        <SafeAreaView style={brandTheme.style(styles.container)}>
+            <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={{ flex: 1 }}
+                style={brandTheme.style({ flex: 1 })}
             >
                 {/* <View style={styles.header}>
                     <Text style={styles.headerTitle}>Clients</Text>
                 </View> */}
-                
-                <View style={styles.searchSection}>
-                    <View style={styles.searchBarContainer}>
-                        <Ionicons name="search" size={20} color={Colors.GREY_TEXT_COLOR} style={styles.searchIcon} />
+
+                <View style={brandTheme.style(styles.searchSection)}>
+                    <View style={brandTheme.style(styles.searchBarContainer)}>
+                        <Ionicons name="search" size={20} color={brandTheme.color(Colors.GREY_TEXT_COLOR)} style={brandTheme.style(styles.searchIcon)} />
                         <TextInput
-                            style={styles.searchBar}
+                            style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.searchBar)]}
                             placeholder="Search clients by name..."
-                            placeholderTextColor={Colors.GREY_TEXT_COLOR}
+                            placeholderTextColor={brandTheme.color(Colors.GREY_TEXT_COLOR)}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             autoCorrect={false}
                         />
                         {searchQuery.length > 0 && (
                             <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={20} color={Colors.GREY_TEXT_COLOR} />
+                                <Ionicons name="close-circle" size={20} color={brandTheme.color(Colors.GREY_TEXT_COLOR)} />
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
 
                 {loading ? (
-                    <View style={styles.emptyContainer}>
-                        <ActivityIndicator size="large" color={Colors.APP_BLUE} />
-                        <Text style={[styles.emptyText, { marginTop: 20 }]}>Loading your clients...</Text>
+                    <View style={brandTheme.style(styles.emptyContainer)}>
+                        <ActivityIndicator size="large" color={brandTheme.color(Colors.APP_BLUE)} />
+                        <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.emptyText, { marginTop: 20 }])]}>Loading your clients...</Text>
                     </View>
                 ) : (
                     <FlatList
@@ -208,10 +212,10 @@ export default function ClientListScreen({ route }) {
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <Ionicons name="search-outline" size={60} color={Colors.DIVIDER} />
-                                <Text style={styles.emptyText}>
-                                    {searchQuery.length > 0 
+                            <View style={brandTheme.style(styles.emptyContainer)}>
+                                <Ionicons name="search-outline" size={60} color={brandTheme.color(Colors.DIVIDER)} />
+                                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.emptyText)]}>
+                                    {searchQuery.length > 0
                                         ? `No clients found matching "${searchQuery}"`
                                         : "You don't have any clients yet."
                                     }
@@ -225,7 +229,7 @@ export default function ClientListScreen({ route }) {
     );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.APP_GREY,

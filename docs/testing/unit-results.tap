@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: score tiers and unavailable values
+ok 1 - score tiers and unavailable values
+  ---
+  duration_ms: 1.0065
+  type: 'test'
+  ...
+# Subtest: sets sort reps, preserve zero and exclude missing scores
+ok 2 - sets sort reps, preserve zero and exclude missing scores
+  ---
+  duration_ms: 0.9248
+  type: 'test'
+  ...
+# Subtest: band snapshots round trip independently through AWSJSON
+ok 3 - band snapshots round trip independently through AWSJSON
+  ---
+  duration_ms: 0.5881
+  type: 'test'
+  ...
+# Subtest: existing ROM thresholds include valid zero and exact boundaries
+ok 4 - existing ROM thresholds include valid zero and exact boundaries
+  ---
+  duration_ms: 1.6079
+  type: 'test'
+  ...
+# Subtest: missing and invalid measurements never become a zero rating
+ok 5 - missing and invalid measurements never become a zero rating
+  ---
+  duration_ms: 0.2226
+  type: 'test'
+  ...
+# Subtest: two independent bands produce the backend integer score
+ok 6 - two independent bands produce the backend integer score
+  ---
+  duration_ms: 0.1372
+  type: 'test'
+  ...
+# Subtest: mutation preserves Float precision and serializes only schema fields
+ok 7 - mutation preserves Float precision and serializes only schema fields
+  ---
+  duration_ms: 0.8473
+  type: 'test'
+  ...
+# Subtest: null and invalid summary fields remain nullable
+ok 8 - null and invalid summary fields remain nullable
+  ---
+  duration_ms: 0.1608
+  type: 'test'
+  ...
+# Subtest: labels follow side and limb placement
+ok 9 - labels follow side and limb placement
+  ---
+  duration_ms: 0.1468
+  type: 'test'
+  ...
+# Subtest: BIOPHLX actions and neutral text use different roles in both modes
+ok 10 - BIOPHLX actions and neutral text use different roles in both modes
+  ---
+  duration_ms: 2.3336
+  type: 'test'
+  ...
+# Subtest: text tokens meet WCAG AA normal-text contrast
+ok 11 - text tokens meet WCAG AA normal-text contrast
+  ---
+  duration_ms: 0.4696
+  type: 'test'
+  ...
+# Subtest: connection green and skin tones retain their meaning
+ok 12 - connection green and skin tones retain their meaning
+  ---
+  duration_ms: 0.303
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 125.5771

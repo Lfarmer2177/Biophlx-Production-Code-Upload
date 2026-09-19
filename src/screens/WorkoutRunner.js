@@ -1,4 +1,6 @@
-import { averageBands, bandLabel, bandRating, combinedRating, meanMetric, repMetricsInput } from '../Components/rep-feedback/repFeedback';
+import BrandButton from '../Components/Button/BrandButton';
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
+import { averageBands, bandLabel, bandRating, combinedRating, meanMetric, repMetricsInput, bandMetricsForReview } from '../Components/rep-feedback/repFeedback';
 import RepFeedbackCard from '../Components/rep-feedback/RepFeedbackCard';
 import { PlacementModal, TutorialCard, DeviceInstructions } from '../Components/band-setup/BandSetup';
 import { placementForType, placementSlots } from '../Components/band-setup/placement';
@@ -171,6 +173,9 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 
 function SvgRadarChart({ data, size = 200, max = 100 }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const margin = 40;
   const full = size + margin * 2;
   const R = size / 2;
@@ -301,8 +306,11 @@ const getThreshold70Color = (value) => {
 };
 
 const IntensityBars = ({ data, onInfo }) => {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   return (
-    <View style={{ width: '100%', gap: 12 }}>
+    <View style={brandTheme.style({ width: '100%', gap: 12 })}>
       {data.map((item, idx) => {
         const widthPct = Math.max(0, Math.min(100, item.value));
         const displayVal =
@@ -321,29 +329,29 @@ const IntensityBars = ({ data, onInfo }) => {
             ? getThreshold70Color(widthPct)
             : getBarColor(widthPct);
         return (
-          <View key={`${item.title}-${idx}`} style={styles.barRow}>
-            <View style={styles.barTitleRow}>
-              <Text style={[styles.barLabel, { fontSize: 16 }]}>{item.title}</Text>
+          <View key={`${item.title}-${idx}`} style={brandTheme.style(styles.barRow)}>
+            <View style={brandTheme.style(styles.barTitleRow)}>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.barLabel, { fontSize: 16 }])]}>{item.title}</Text>
               <Pressable
                 hitSlop={8}
                 onPress={() => onInfo && onInfo(item)}
-                style={styles.infoIconWrap}
+                style={brandTheme.style(styles.infoIconWrap)}
               >
-                <Text style={styles.infoIcon}>ℹ️</Text>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.infoIcon)]}>ℹ️</Text>
               </Pressable>
             </View>
-            <View style={[styles.barTrack, { height: 14, borderRadius: 10 }]}>
+            <View style={brandTheme.style([styles.barTrack, { height: 14, borderRadius: 10 }])}>
               <View
-                style={[
+                style={brandTheme.style([
                   styles.barFill,
                   {
                     width: `${widthPct}%`,
                     backgroundColor: color,
                   },
-                ]}
+                ])}
               />
             </View>
-            <Text style={styles.barValue}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.barValue)]}>
               {Number(displayVal).toFixed ? (Number.isFinite(Number(displayVal)) ? Number(displayVal).toFixed(decimals) : displayVal) : displayVal}
             </Text>
           </View>
@@ -355,6 +363,9 @@ const IntensityBars = ({ data, onInfo }) => {
 
 
 export default function WorkoutRunner({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const workoutPlan = route?.params?.workoutPlan || null;
   const scheduledItems = Array.isArray(workoutPlan?.items) ? workoutPlan.items : [];
   const normalizedPlanItems = useMemo(() => {
@@ -1154,12 +1165,12 @@ export default function WorkoutRunner({ route, navigation }) {
       submittedReviews.current.add(review.id);
       const score = combinedRating(bandRating(review.primaryRom), bandRating(review.secondaryRom));
       const velocity = meanMetric(review.primaryMetrics?.velocity, review.secondaryMetrics?.velocity);
-      const snapshot = { ...original, ROM: review.rom, Score: score,
+      const snapshot = { ...original, BandMetrics: bandMetricsForReview(review, original.weight), ROM: review.rom, Score: score,
         TUT: meanMetric(review.primaryMetrics?.tut, review.secondaryMetrics?.tut),
         Velocity: velocity, Momentum: velocity == null ? null : velocity * original.weight };
       setRepSnapshots(previous => [...previous, snapshot]);
       setRows(previous => previous.map(row => row.id === review.id ? { ...row, awaitingBands: false,
-        score, rom: snapshot.ROM, tut: snapshot.TUT, velocity: snapshot.Velocity, momentum: snapshot.Momentum } : row));
+        band_metrics: snapshot.BandMetrics, score, rom: snapshot.ROM, tut: snapshot.TUT, velocity: snapshot.Velocity, momentum: snapshot.Momentum } : row));
       persistRepSnapshot(snapshot);
       pendingReviewSnapshots.current.delete(review.id);
     }
@@ -1290,7 +1301,7 @@ export default function WorkoutRunner({ route, navigation }) {
         });
         groups[key].forEach((row, repIdx) => {
           const session_item_rep_index = repIdx + 1;
-          const metrics = repMetricsInput({ ROM: row.rom, Score: row.score,
+          const metrics = repMetricsInput({ BandMetrics: row.band_metrics, ROM: row.rom, Score: row.score,
             TUT: row.tut, Velocity: row.velocity, Momentum: row.momentum });
           promises.push(
             client.graphql({
@@ -1330,16 +1341,16 @@ export default function WorkoutRunner({ route, navigation }) {
     }
   };
   const renderRow = ({ item }) => (
-    <View style={styles.card}>
-      <View style={{ marginBottom: 8 }}>
+    <View style={brandTheme.style(styles.card)}>
+      <View style={brandTheme.style({ marginBottom: 8 })}>
         <Pressable
           onPress={() => setOpenPickerId(openPickerId === item.id ? null : item.id)}
-          style={styles.select}
+          style={brandTheme.style(styles.select)}
         >
-          <Text>{item.workout}</Text>
+          <Text style={{color:brandTheme.colors.text}}>{item.workout}</Text>
         </Pressable>
         {openPickerId === item.id && (
-          <View style={styles.dropdown}>
+          <View style={brandTheme.style(styles.dropdown)}>
             {workoutOptions.map((opt) => (
               <Pressable
                 key={opt}
@@ -1347,9 +1358,9 @@ export default function WorkoutRunner({ route, navigation }) {
                   updateRow(item.id, 'workout', opt);
                   setOpenPickerId(null);
                 }}
-                style={styles.option}
+                style={brandTheme.style(styles.option)}
               >
-                <Text>{opt}</Text>
+                <Text style={{color:brandTheme.colors.text}}>{opt}</Text>
               </Pressable>
             ))}
           </View>
@@ -1432,41 +1443,41 @@ export default function WorkoutRunner({ route, navigation }) {
       const hasAnyPoints = primaryPoints.length || secondaryPoints?.length;
 
       return (
-        <View style={styles.liveRomCard}>
-          <View style={styles.liveRomHeader}>
-            <Text style={styles.sectionLabel}>{title} Trend</Text>
-            <Text style={styles.liveRomHeaderText}>{activeWorkoutLabel || 'No workout selected'}</Text>
+        <View style={brandTheme.style(styles.liveRomCard)}>
+          <View style={brandTheme.style(styles.liveRomHeader)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>{title} Trend</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomHeaderText)]}>{activeWorkoutLabel || 'No workout selected'}</Text>
           </View>
           {hasAnyPoints ? (
             <>
-              <View style={styles.liveRomStatsRow}>
-                <View style={styles.liveRomStatBox}>
-                  <Text style={styles.liveRomStatLabel}>Device 1</Text>
-                  <Text style={styles.liveRomStatValue}>{formatValue(latestPrimaryPoint?.value, decimals)}</Text>
-                  <Text style={styles.liveRomStatMeta}>{latestPrimaryPoint?.detailLabel || '--'}</Text>
+              <View style={brandTheme.style(styles.liveRomStatsRow)}>
+                <View style={brandTheme.style(styles.liveRomStatBox)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatLabel)]}>Device 1</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatValue)]}>{formatValue(latestPrimaryPoint?.value, decimals)}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatMeta)]}>{latestPrimaryPoint?.detailLabel || '--'}</Text>
                 </View>
-                <View style={styles.liveRomStatBox}>
-                  <Text style={styles.liveRomStatLabel}>Device 2</Text>
-                  <Text style={styles.liveRomStatValue}>{formatValue(latestSecondaryPoint?.value, decimals)}</Text>
-                  <Text style={styles.liveRomStatMeta}>{latestSecondaryPoint?.detailLabel || '--'}</Text>
+                <View style={brandTheme.style(styles.liveRomStatBox)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatLabel)]}>Device 2</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatValue)]}>{formatValue(latestSecondaryPoint?.value, decimals)}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatMeta)]}>{latestSecondaryPoint?.detailLabel || '--'}</Text>
                 </View>
-                <View style={styles.liveRomStatBox}>
-                  <Text style={styles.liveRomStatLabel}>Target</Text>
-                  <Text style={styles.liveRomStatValue}>{formatValue(target, decimals)}</Text>
-                  <Text style={styles.liveRomStatMeta}>{unitLabel}</Text>
-                </View>
-              </View>
-              <View style={styles.liveRomLegendRow}>
-                <View style={styles.liveRomLegendItem}>
-                  <View style={[styles.liveRomLegendDot, { backgroundColor: '#2563eb' }]} />
-                  <Text style={styles.liveRomLegendText}>Device 1</Text>
-                </View>
-                <View style={styles.liveRomLegendItem}>
-                  <View style={[styles.liveRomLegendDot, { backgroundColor: '#f97316' }]} />
-                  <Text style={styles.liveRomLegendText}>Device 2</Text>
+                <View style={brandTheme.style(styles.liveRomStatBox)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatLabel)]}>Target</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatValue)]}>{formatValue(target, decimals)}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomStatMeta)]}>{unitLabel}</Text>
                 </View>
               </View>
-              <View style={styles.liveRomChartWrap}>
+              <View style={brandTheme.style(styles.liveRomLegendRow)}>
+                <View style={brandTheme.style(styles.liveRomLegendItem)}>
+                  <View style={brandTheme.style([styles.liveRomLegendDot, { backgroundColor: '#2563eb' }])} />
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomLegendText)]}>Device 1</Text>
+                </View>
+                <View style={brandTheme.style(styles.liveRomLegendItem)}>
+                  <View style={brandTheme.style([styles.liveRomLegendDot, { backgroundColor: '#f97316' }])} />
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomLegendText)]}>Device 2</Text>
+                </View>
+              </View>
+              <View style={brandTheme.style(styles.liveRomChartWrap)}>
                 <MetricTrendLineChart
                   series={[
                     { name: 'Device 1', color: '#2563eb', points: primaryPoints },
@@ -1476,10 +1487,10 @@ export default function WorkoutRunner({ route, navigation }) {
                   target={target}
                 />
               </View>
-              <Text style={styles.liveRomCaption}>Updates after each completed rep result.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomCaption)]}>Updates after each completed rep result.</Text>
             </>
           ) : (
-            <Text style={styles.muted}>The {title.toLowerCase()} graph will populate here after each completed rep.</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>The {title.toLowerCase()} graph will populate here after each completed rep.</Text>
           )}
         </View>
       );
@@ -1496,14 +1507,14 @@ export default function WorkoutRunner({ route, navigation }) {
       ];
 
       return (
-        <View style={styles.metricsList}>
-          <Text style={styles.metricsListTitle}>
+        <View style={brandTheme.style(styles.metricsList)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.metricsListTitle)]}>
             {title}: {isConnected ? 'Connected' : 'Not connected'}
           </Text>
           {rows.map(([label, value]) => (
-            <View key={`${title}-${label}`} style={styles.metricsListRow}>
-              <Text style={styles.metricsListLabel}>{label}</Text>
-              <Text style={styles.metricsListValue}>{isConnected ? value : '--'}</Text>
+            <View key={`${title}-${label}`} style={brandTheme.style(styles.metricsListRow)}>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.metricsListLabel)]}>{label}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.metricsListValue)]}>{isConnected ? value : '--'}</Text>
             </View>
           ))}
         </View>
@@ -1511,67 +1522,67 @@ export default function WorkoutRunner({ route, navigation }) {
     };
 
     return (
-      <View style={styles.listHeader}>
-        <Text style={styles.header}>Perform Workout</Text>
+      <View style={brandTheme.style(styles.listHeader)}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.header)]}>Perform Workout</Text>
         {workoutPlan && (
-          <View style={styles.planCard}>
-            <Text style={styles.planTitle}>{workoutPlan.name || 'Scheduled Workout'}</Text>
+          <View style={brandTheme.style(styles.planCard)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planTitle)]}>{workoutPlan.name || 'Scheduled Workout'}</Text>
             {normalizedPlanItems.length ? (
               normalizedPlanItems.map((entry) => {
                 const percent = getCompletionPercent(entry);
                 return (
-                  <View key={`${entry.workout_id}-${entry.workout_item_index}`} style={styles.planRow}>
-                    <Text style={styles.planRowTitle}>
+                  <View key={`${entry.workout_id}-${entry.workout_item_index}`} style={brandTheme.style(styles.planRow)}>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planRowTitle)]}>
                       {entry.workout_item_index}. {entry.label}
                     </Text>
-                    <Text style={styles.planRowMeta}>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planRowMeta)]}>
                       Focus: {entry.muscle_focus || 'N/A'} · Sets {entry.target_sets || 0} · Reps{' '}
                       {entry.target_reps || 0}
                     </Text>
-                    <Text style={styles.planRowMeta}>Progress: {percent}%</Text>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planRowMeta)]}>Progress: {percent}%</Text>
                   </View>
                 );
               })
             ) : (
-              <Text style={styles.planRowMeta}>No workout items found for this plan.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planRowMeta)]}>No workout items found for this plan.</Text>
             )}
           </View>
         )}
 
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionLabel}>
+        <View style={brandTheme.style(styles.sectionRow)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>
             Device 1: {connectedDevice ? connectedDevice.name || connectedDevice.id : 'Not connected'}
           </Text>
         </View>
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionLabel}>
+        <View style={brandTheme.style(styles.sectionRow)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>
             Device 2: {secondaryDevice ? secondaryDevice.name || secondaryDevice.id : 'Not connected'}
           </Text>
         </View>
         {!connectedDevice ? (
-          <Text style={styles.muted}>Connect sensors from the Home screen before starting.</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>Connect sensors from the Home screen before starting.</Text>
         ) : null}
 
-        <View style={styles.selectionCard}>
+        <View style={brandTheme.style(styles.selectionCard)}>
           <Pressable
-            style={styles.selectionHeader}
+            style={brandTheme.style(styles.selectionHeader)}
             onPress={() => setExerciseSelectionExpanded((prev) => !prev)}
           >
             <View>
-              <Text style={styles.selectionTitle}>Exercise Selection</Text>
-              <Text style={styles.selectionSubtitle}>{selectedWorkout || 'No exercise selected'}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.selectionTitle)]}>Exercise Selection</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.selectionSubtitle)]}>{selectedWorkout || 'No exercise selected'}</Text>
             </View>
-            <Text style={styles.selectionToggle}>{exerciseSelectionExpanded ? 'Hide' : 'Show'}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.selectionToggle)]}>{exerciseSelectionExpanded ? 'Hide' : 'Show'}</Text>
           </Pressable>
           {exerciseSelectionExpanded ? (
-            <View style={styles.chipRow}>
+            <View style={brandTheme.style(styles.chipRow)}>
               {workoutOptions.map((opt) => (
                 <Pressable
                   key={opt}
                   onPress={() => handleWorkoutSelection(opt)}
-                  style={[styles.chip, selectedWorkout === opt && styles.chipSelected]}
+                  style={brandTheme.style([styles.chip, selectedWorkout === opt && styles.chipSelected])}
                 >
-                  <Text style={{ color: selectedWorkout === opt ? '#fff' : '#333' }}>{opt}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ color: selectedWorkout === opt ? '#fff' : '#333' })]}>{opt}</Text>
                 </Pressable>
               ))}
             </View>
@@ -1585,8 +1596,8 @@ export default function WorkoutRunner({ route, navigation }) {
           {renderMetricList('Device 2', secondaryFeedback, !!secondaryDevice)}
         </View> */}
         <>
-          <View style={{ marginTop: 12 }}>
-            <Text style={styles.sectionLabel}>Rep Momentum</Text>
+          <View style={brandTheme.style({ marginTop: 12 })}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>Rep Momentum</Text>
             {repSnapshots.length ? (
               (() => {
                 const last = repSnapshots[repSnapshots.length - 1] || {};
@@ -1608,50 +1619,50 @@ export default function WorkoutRunner({ route, navigation }) {
                   changeText = `${delta > 0 ? '+' : ''}${delta.toFixed(1)}%`;
                 }
                 return (
-                  <View style={styles.momentumValueWrap}>
-                    <Text style={styles.momentumValueMain}>{currentVal.toFixed(0)}</Text>
-                    <View style={styles.momentumChangeRow}>
-                      <Text style={[styles.momentumChange, { color: changeColor }]}>{arrow} {changeText}</Text>
+                  <View style={brandTheme.style(styles.momentumValueWrap)}>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumValueMain)]}>{currentVal.toFixed(0)}</Text>
+                    <View style={brandTheme.style(styles.momentumChangeRow)}>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.momentumChange, { color: changeColor }])]}>{arrow} {changeText}</Text>
                     </View>
                   </View>
                 );
               })()
             ) : (
-              <Text style={styles.muted}>No rep momentum recorded yet.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No rep momentum recorded yet.</Text>
             )}
           </View>
 
-          <View style={styles.selectionCard}>
+          <View style={brandTheme.style(styles.selectionCard)}>
             <Pressable
-              style={styles.selectionHeader}
+              style={brandTheme.style(styles.selectionHeader)}
               onPress={() => setTrainingSettingsExpanded((prev) => !prev)}
             >
               <View>
-                <Text style={styles.selectionTitle}>Workout Settings</Text>
-                <Text style={styles.selectionSubtitle}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.selectionTitle)]}>Workout Settings</Text>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.selectionSubtitle)]}>
                   Weight {weight.toFixed(1)} lbs
                   {showManualTargets ? ` · TUT ${maxTUT}s · Velocity ${maxVelocity} m/s` : ''}
                 </Text>
               </View>
-              <Text style={styles.selectionToggle}>{trainingSettingsExpanded ? 'Hide' : 'Show'}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.selectionToggle)]}>{trainingSettingsExpanded ? 'Hide' : 'Show'}</Text>
             </Pressable>
             {trainingSettingsExpanded ? (
               <>
-                <View style={styles.weightRow}>
-                  <Text style={styles.sectionLabel}>Weight Lifted</Text>
-                  <Text style={styles.weightValue}>{weight.toFixed(1)} lbs</Text>
-                  <View style={styles.loadGrid}>
+                <View style={brandTheme.style(styles.weightRow)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>Weight Lifted</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.weightValue)]}>{weight.toFixed(1)} lbs</Text>
+                  <View style={brandTheme.style(styles.loadGrid)}>
                     {LOAD_OPTIONS.map((amount) => (
-                      <View style={styles.loadRow} key={amount}>
+                      <View style={brandTheme.style(styles.loadRow)} key={amount}>
                         <TouchableOpacity
-                          style={styles.loadButton}
+                          style={brandTheme.style(styles.loadButton)}
                           onPress={() => adjustWeight(-amount)}
                         >
-                          <Text style={styles.loadButtonText}>-</Text>
+                          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.loadButtonText)]}>-</Text>
                         </TouchableOpacity>
-                        <Text style={styles.loadValue}>{amount} lbs</Text>
-                        <TouchableOpacity style={styles.loadButton} onPress={() => adjustWeight(amount)}>
-                          <Text style={styles.loadButtonText}>+</Text>
+                        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.loadValue)]}>{amount} lbs</Text>
+                        <TouchableOpacity style={brandTheme.style(styles.loadButton)} onPress={() => adjustWeight(amount)}>
+                          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.loadButtonText)]}>+</Text>
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -1660,31 +1671,31 @@ export default function WorkoutRunner({ route, navigation }) {
 
                 {showManualTargets && (
                   <>
-                    <View style={styles.section}>
-                      <Text style={styles.sectionLabel}>Max TUT (s)</Text>
-                      <View style={styles.chipRow}>
+                    <View style={brandTheme.style(styles.section)}>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>Max TUT (s)</Text>
+                      <View style={brandTheme.style(styles.chipRow)}>
                         {tutOptions.map((opt, idx) => (
                           <Pressable
                             key={opt.label}
                             onPress={() => setTutLevel(idx)}
-                            style={[styles.chip, tutLevel === idx && styles.chipSelected]}
+                            style={brandTheme.style([styles.chip, tutLevel === idx && styles.chipSelected])}
                           >
-                            <Text style={{ color: tutLevel === idx ? '#fff' : '#333' }}>{opt.label}</Text>
+                            <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ color: tutLevel === idx ? '#fff' : '#333' })]}>{opt.label}</Text>
                           </Pressable>
                         ))}
                       </View>
                     </View>
 
-                    <View style={styles.section}>
-                      <Text style={styles.sectionLabel}>Max Velocity (m/s)</Text>
-                      <View style={styles.chipRow}>
+                    <View style={brandTheme.style(styles.section)}>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>Max Velocity (m/s)</Text>
+                      <View style={brandTheme.style(styles.chipRow)}>
                         {velOptions.map((opt, idx) => (
                           <Pressable
                             key={opt.label}
                             onPress={() => setVelLevel(idx)}
-                            style={[styles.chip, velLevel === idx && styles.chipSelected]}
+                            style={brandTheme.style([styles.chip, velLevel === idx && styles.chipSelected])}
                           >
-                            <Text style={{ color: velLevel === idx ? '#fff' : '#333' }}>{opt.label}</Text>
+                            <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ color: velLevel === idx ? '#fff' : '#333' })]}>{opt.label}</Text>
                           </Pressable>
                         ))}
                       </View>
@@ -1738,11 +1749,11 @@ export default function WorkoutRunner({ route, navigation }) {
               returnKeyType="send"
               onSubmitEditing={() => sendCommand()}
             /> */}
-            {/* <Button title="Send Command" onPress={() => sendCommand()} /> */}
-            <View style={{ marginTop: 12 }}>
+            {/* <BrandButton title="Send Command" onPress={() => sendCommand()} /> */}
+            <View style={brandTheme.style({ marginTop: 12 })}>
               <Button
                 title="End Workout"
-                color="#FF4136"
+                color={brandTheme.color("#FF4136")}
                 onPress={() =>
                   sendWorkoutCommandToConnectedDevices({
                     primaryCommand: createCommand(DeviceCommands.stop),
@@ -1781,33 +1792,33 @@ export default function WorkoutRunner({ route, navigation }) {
     });
 
     return (
-      <View style={styles.summaryCard}>
-        <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10 }}>Perform Workout</Text>
-        <View style={{ flexDirection: 'row', marginBottom: 6 }}>
-          <Text style={styles.th}>Workout</Text>
-          <Text style={styles.th}>Set #</Text>
-          <Text style={styles.th}>Rep #</Text>
-          <Text style={styles.th}>Weight</Text>
+      <View style={brandTheme.style(styles.summaryCard)}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ fontSize: 18, fontWeight: '700', marginBottom: 10 })]}>Perform Workout</Text>
+        <View style={brandTheme.style({ flexDirection: 'row', marginBottom: 6 })}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.th)]}>Workout</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.th)]}>Set #</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.th)]}>Rep #</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.th)]}>Weight</Text>
         </View>
         <FlatList
           data={lines}
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item }) => (
-            <View style={{ flexDirection: 'row', paddingVertical: 6 }}>
-              <Text style={styles.td}>{item.workout}</Text>
-              <Text style={styles.td}>{item.setNo}</Text>
-              <Text style={styles.td}>{item.repNo}</Text>
-              <Text style={styles.td}>{item.weight}</Text>
+            <View style={brandTheme.style({ flexDirection: 'row', paddingVertical: 6 })}>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.td)]}>{item.workout}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.td)]}>{item.setNo}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.td)]}>{item.repNo}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.td)]}>{item.weight}</Text>
             </View>
           )}
         />
-        <Button title="Close" onPress={() => setShowSummary(false)} />
+        <BrandButton color={brandTheme.colors.primary} title="Close" onPress={() => setShowSummary(false)} />
       </View>
     );
   };
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={brandTheme.style({ flex: 1 })}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={64}
     >
@@ -1815,63 +1826,63 @@ export default function WorkoutRunner({ route, navigation }) {
         <TutorialCard />
         <DeviceInstructions />
         {renderHeader()}
-        <View style={{ marginTop: 16 }}>
-          <Button title="Complete Workout" onPress={() => setShowSummary(true)} />
+        <View style={brandTheme.style({ marginTop: 16 })}>
+          <BrandButton color={brandTheme.colors.primary} title="Complete Workout" onPress={() => setShowSummary(true)} />
         </View>
       </ScrollView>
 
       <Modal visible={infoModal.visible} transparent animationType="fade">
-        <View style={styles.backdrop}>
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoTitle}>{infoModal.title}</Text>
-            <Text style={styles.infoText}>{infoModal.text}</Text>
-            <Button title="Close" onPress={() => setInfoModal({ visible: false, title: '', text: '' })} />
+        <View style={brandTheme.style(styles.backdrop)}>
+          <View style={brandTheme.style(styles.infoContainer)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.infoTitle)]}>{infoModal.title}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.infoText)]}>{infoModal.text}</Text>
+            <BrandButton color={brandTheme.colors.primary} title="Close" onPress={() => setInfoModal({ visible: false, title: '', text: '' })} />
           </View>
         </View>
       </Modal>
 
       <Modal visible={workoutPhase === 'countdown'} transparent animationType="fade">
-        <View style={styles.countdownOverlay}>
-          <View style={styles.countdownCard}>
-            <Text style={styles.countdownTitle}>{countdownWorkoutLabel}</Text>
+        <View style={brandTheme.style(styles.countdownOverlay)}>
+          <View style={brandTheme.style(styles.countdownCard)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.countdownTitle)]}>{countdownWorkoutLabel}</Text>
             <Text
-              style={[
+              style={[{color:brandTheme.colors.text}, brandTheme.style([
                 styles.countdownTopText,
                 isUserStill ? styles.countdownTopTextIdle : styles.countdownTopTextWarn,
-              ]}
+              ])]}
             >
               {isUserStill ? 'Starting in' : 'Hold still...'}
             </Text>
             <View
-              style={[
+              style={brandTheme.style([
                 styles.countdownCircle,
                 isUserStill ? styles.countdownCircleIdle : styles.countdownCircleWarn,
-              ]}
+              ])}
             >
               <Text
-                style={[
+                style={[{color:brandTheme.colors.text}, brandTheme.style([
                   styles.countdownNumber,
                   isUserStill ? styles.countdownNumberIdle : styles.countdownNumberWarn,
-                ]}
+                ])]}
               >
                 {countdownSeconds}
               </Text>
             </View>
-            <Text style={styles.countdownHint}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.countdownHint)]}>
               Hold still until the countdown reaches zero. Begin when your band buzzes.
             </Text>
-            <View style={styles.countdownStatusRow}>
+            <View style={brandTheme.style(styles.countdownStatusRow)}>
               <View
-                style={[
+                style={brandTheme.style([
                   styles.countdownStatusDot,
                   isUserStill ? styles.countdownStatusDotIdle : styles.countdownStatusDotWarn,
-                ]}
+                ])}
               />
               <Text
-                style={[
+                style={[{color:brandTheme.colors.text}, brandTheme.style([
                   styles.countdownStatusText,
                   isUserStill ? styles.countdownStatusTextIdle : styles.countdownStatusTextWarn,
-                ]}
+                ])]}
               >
                 {countdownStatusLabel}
               </Text>
@@ -1881,21 +1892,21 @@ export default function WorkoutRunner({ route, navigation }) {
       </Modal>
 
       <Modal visible={showSummary} transparent animationType="fade">
-        <View style={styles.backdrop}>
-          <View style={styles.summaryContainer}>
+        <View style={brandTheme.style(styles.backdrop)}>
+          <View style={brandTheme.style(styles.summaryContainer)}>
             <ScrollView contentContainerStyle={styles.summaryScroll}>
               <SummaryTable />
             </ScrollView>
-            <View style={styles.summaryActions}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Button
+            <View style={brandTheme.style(styles.summaryActions)}>
+              <View style={brandTheme.style({ flex: 1, marginRight: 8 })}>
+                <BrandButton color={brandTheme.colors.primary}
                   title={savingWorkout ? 'Saving...' : 'Save Workout'}
                   onPress={handleSaveWorkout}
                   disabled={savingWorkout}
                 />
               </View>
-              <View style={{ flex: 1 }}>
-                <Button title="Close" onPress={() => setShowSummary(false)} />
+              <View style={brandTheme.style({ flex: 1 })}>
+                <BrandButton color={brandTheme.colors.primary} title="Close" onPress={() => setShowSummary(false)} />
               </View>
             </View>
           </View>
@@ -1913,9 +1924,9 @@ export default function WorkoutRunner({ route, navigation }) {
         transparent
         onRequestClose={() => setSummaryModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Workout Summary</Text>
+        <View style={brandTheme.style(styles.modalOverlay)}>
+          <View style={brandTheme.style(styles.modalCard)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.modalTitle)]}>Workout Summary</Text>
             {summary && (
               <>
                 <IntensityBars
@@ -1946,12 +1957,12 @@ export default function WorkoutRunner({ route, navigation }) {
                   onInfo={handleInfo}
                 />
                 {summary.ScoreSeries?.length ? (
-                  <View style={[styles.liveRomCard, { marginTop: 12, marginBottom: 12 }]}>
-                    <View style={styles.liveRomHeader}>
-                      <Text style={styles.sectionLabel}>Score Trend</Text>
-                      <Text style={styles.liveRomHeaderText}>Rep by rep</Text>
+                  <View style={brandTheme.style([styles.liveRomCard, { marginTop: 12, marginBottom: 12 }])}>
+                    <View style={brandTheme.style(styles.liveRomHeader)}>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionLabel)]}>Score Trend</Text>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.liveRomHeaderText)]}>Rep by rep</Text>
                     </View>
-                    <View style={styles.liveRomChartWrap}>
+                    <View style={brandTheme.style(styles.liveRomChartWrap)}>
                       <MetricTrendLineChart
                         series={[{ name: 'Score', color: '#16a34a', points: summary.ScoreSeries }]}
                         width={Math.min(screenWidth - 96, 320)}
@@ -1970,12 +1981,12 @@ export default function WorkoutRunner({ route, navigation }) {
                   ['Momentum', Math.round(summary.Momentum)],
                   ['Combined score', summary.Score == null ? 'Not rated' : Math.round(summary.Score)],
                 ].map(([label, value]) => (
-                  <View style={styles.statRow} key={label}>
-                    <Text>{label}</Text>
-                    <Text style={styles.statValue}>{value}</Text>
+                  <View style={brandTheme.style(styles.statRow)} key={label}>
+                    <Text style={{color:brandTheme.colors.text}}>{label}</Text>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.statValue)]}>{value}</Text>
                   </View>
                 ))}
-                <Button title="Close" onPress={() => setSummaryModalVisible(false)} />
+                <BrandButton color={brandTheme.colors.primary} title="Close" onPress={() => setSummaryModalVisible(false)} />
               </>
             )}
           </View>
@@ -1987,6 +1998,9 @@ export default function WorkoutRunner({ route, navigation }) {
 }
 
 function MetricTrendLineChart({ series = [], width = screenWidth - 56, height = 190, target = 120 }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const usableSeries = series
     .map((entry) => ({
       ...entry,
@@ -2071,7 +2085,7 @@ function MetricTrendLineChart({ series = [], width = screenWidth - 56, height = 
 // Styles defined in StyleSheet below.
 
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   listHeader: {
     backgroundColor: '#fff',
     borderRadius: 12,

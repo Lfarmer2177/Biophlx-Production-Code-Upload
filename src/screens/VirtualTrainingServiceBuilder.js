@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
@@ -51,8 +52,8 @@ const LIST_WORKOUT_PRODUCTS_BY_TRAINER = /* GraphQL */ `
 
 const CREATE_VIRTUAL_SERVICE = /* GraphQL */ `
   mutation CreateVirtualTrainingService($input: CreateVirtualTrainingServiceInput!) {
-    createVirtualTrainingService(input: $input) { 
-      service_id 
+    createVirtualTrainingService(input: $input) {
+      service_id
       stripe_product_id
       stripe_price_id
     }
@@ -89,6 +90,9 @@ const CREATE_STRIPE_PRODUCT = /* GraphQL */ `
 `;
 
 export default function VirtualTrainingServiceBuilder({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const trainer_id = route?.params?.trainer_id;
 
@@ -119,7 +123,7 @@ export default function VirtualTrainingServiceBuilder({ route, navigation }) {
         query: LIST_WORKOUTS_BY_TRAINER,
         variables: { trainer_id, limit: 100 },
       }).catch(() => ({ data: {} }));
-      
+
       // 2. Fetch workouts by customer_id (current user)
       let customerRes = { data: {} };
       try {
@@ -150,7 +154,7 @@ export default function VirtualTrainingServiceBuilder({ route, navigation }) {
 
       const trainerWorkouts = workoutRes?.data?.listWorkoutsByTrainer?.items || workoutRes?.data?.listWorkoutsByTrainer || [];
       const customerWorkouts = customerRes?.data?.listWorkoutsByCustomer?.items || customerRes?.data?.listWorkoutsByCustomer || [];
-      
+
       // Merge and dedup workouts
       const allWorkouts = [...trainerWorkouts, ...customerWorkouts];
       const uniqueWorkouts = [];
@@ -201,7 +205,7 @@ export default function VirtualTrainingServiceBuilder({ route, navigation }) {
       Alert.alert('Missing name', 'Please enter a service name.');
       return;
     }
-    
+
     const priceNum = price ? parseFloat(price) : 0;
     if (priceNum <= 0) {
       Alert.alert('Invalid Price', 'Please enter a valid price greater than 0.');
@@ -236,7 +240,7 @@ export default function VirtualTrainingServiceBuilder({ route, navigation }) {
       console.log('Full Service Sync Response:', JSON.stringify(stripeRes, null, 2));
 
       const stripeData = stripeRes.data?.createStripeProduct;
-      
+
       if (!stripeData) {
         throw new Error('No data returned from createStripeProduct mutation.');
       }
@@ -260,76 +264,76 @@ export default function VirtualTrainingServiceBuilder({ route, navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Create Virtual Training Service</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Create Virtual Training Service</Text>
       {loading ? <ActivityIndicator /> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.error)]}>{error}</Text> : null}
 
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="Service name"
         value={serviceName}
         onChangeText={setServiceName}
       />
-      <TextInput
-        style={[styles.input, { height: 100 }]}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style([styles.input, { height: 100 }])]}
         placeholder="Description"
         multiline
         value={description}
         onChangeText={setDescription}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="Duration (weeks)"
         keyboardType="numeric"
         value={durationWeeks}
         onChangeText={setDurationWeeks}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="Price (USD)"
         keyboardType="decimal-pad"
         value={price}
         onChangeText={setPrice}
       />
 
-      <Text style={styles.section}>Include workouts</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.section)]}>Include workouts</Text>
       {workouts.map((w) => {
         const selected = selectedWorkouts.includes(w.id);
         return (
           <TouchableOpacity
             key={w.id}
-            style={[styles.row, selected && styles.selectedRow]}
+            style={brandTheme.style([styles.row, selected && styles.selectedRow])}
             onPress={() => toggleSelection(w.id, selectedWorkouts, setSelectedWorkouts)}
           >
-            <Text>{w.name}</Text>
+            <Text style={{color:brandTheme.colors.text}}>{w.name}</Text>
           </TouchableOpacity>
         );
       })}
-      {!workouts.length && !loading ? <Text style={styles.muted}>No workouts found.</Text> : null}
+      {!workouts.length && !loading ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No workouts found.</Text> : null}
 
-      <Text style={styles.section}>Include workout products</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.section)]}>Include workout products</Text>
       {products.map((p) => {
         const selected = selectedProducts.includes(p.id);
         return (
           <TouchableOpacity
             key={p.id}
-            style={[styles.row, selected && styles.selectedRow]}
+            style={brandTheme.style([styles.row, selected && styles.selectedRow])}
             onPress={() => toggleSelection(p.id, selectedProducts, setSelectedProducts)}
           >
-            <Text>{p.name}</Text>
+            <Text style={{color:brandTheme.colors.text}}>{p.name}</Text>
           </TouchableOpacity>
         );
       })}
-      {!products.length && !loading ? <Text style={styles.muted}>No workout products found.</Text> : null}
+      {!products.length && !loading ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No workout products found.</Text> : null}
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
-        <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save Service'}</Text>
+      <TouchableOpacity style={brandTheme.style(styles.saveButton)} onPress={handleSave} disabled={saving}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.saveText)]}>{saving ? 'Saving...' : 'Save Service'}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 12,

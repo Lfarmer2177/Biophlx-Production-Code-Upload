@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { generateClient } from 'aws-amplify/api';
@@ -39,6 +40,9 @@ const LIST_WORKOUTS_BY_TRAINER = /* GraphQL */ `
 `;
 
 export default function TrainerDashboard({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [loading, setLoading] = useState(false);
   const [trainer, setTrainer] = useState(null);
@@ -139,53 +143,53 @@ export default function TrainerDashboard({ route, navigation }) {
       displayValue = `$${Number(displayValue).toFixed(2)}`;
     }
     return (
-      <View style={styles.statCard} key={label}>
-        <Text style={styles.statLabel}>{label}</Text>
-        <Text style={styles.statValue}>{displayValue}</Text>
+      <View style={brandTheme.style(styles.statCard)} key={label}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.statLabel)]}>{label}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.statValue)]}>{displayValue}</Text>
       </View>
     );
   };
 
   return (
     <ScrollView
-      style={styles.safe}
+      style={brandTheme.style(styles.safe)}
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={loadTrainer} />}
     >
-      <Text style={styles.title}>Trainer Dashboard</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Trainer Dashboard</Text>
       {loading ? <ActivityIndicator /> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.error)]}>{error}</Text> : null}
       {!loading && !trainer && !error ? (
-        <Text style={styles.muted}>No trainer data available.</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No trainer data available.</Text>
       ) : null}
       {trainer ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Trainer Stats</Text>
-          <Text style={styles.muted}>Trainer ID: {trainer.trainer_id}</Text>
-          <Text style={styles.muted}>Focus: {trainer.training_focus || 'N/A'}</Text>
-          <View style={{ marginTop: 12, gap: 8 }}>
+        <View style={brandTheme.style(styles.card)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionTitle)]}>Trainer Stats</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>Trainer ID: {trainer.trainer_id}</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>Focus: {trainer.training_focus || 'N/A'}</Text>
+          <View style={brandTheme.style({ marginTop: 12, gap: 8 })}>
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={brandTheme.style(styles.primaryButton)}
               onPress={() => {
                 if (trainer?.trainer_id) {
                   navigation.navigate('WorkoutProductBuilder', { trainer_id: trainer.trainer_id });
                 }
               }}
             >
-              <Text style={styles.primaryButtonText}>Build Workout Product</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.primaryButtonText)]}>Build Workout Product</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.secondaryButton}
+              style={brandTheme.style(styles.secondaryButton)}
               onPress={() => {
                 if (trainer?.trainer_id) {
                   navigation.navigate('VirtualTrainingServiceBuilder', { trainer_id: trainer.trainer_id });
                 }
               }}
             >
-              <Text style={styles.secondaryButtonText}>Create Virtual Training Service</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.secondaryButtonText)]}>Create Virtual Training Service</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.statGrid}>
+          <View style={brandTheme.style(styles.statGrid)}>
             {renderStat('Workouts Created', trainer.workouts_created ?? workoutCount)}
             {renderStat('Services Sold', trainer.services_sold)}
             {renderStat('Total Clients', trainer.total_clients)}
@@ -196,20 +200,20 @@ export default function TrainerDashboard({ route, navigation }) {
       ) : null}
 
         {!loading && <TouchableOpacity
-              style={styles.primaryButton}
+              style={brandTheme.style(styles.primaryButton)}
               onPress={() => {
                 if (trainer?.trainer_id) {
                   navigation.navigate('ClientListScreen', { trainer_id: trainer.trainer_id });
                 }
               }}
             >
-              <Text style={styles.primaryButtonText}>Client List</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.primaryButtonText)]}>Client List</Text>
             </TouchableOpacity>}
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#fff',

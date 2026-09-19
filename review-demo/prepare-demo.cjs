@@ -1,0 +1,16 @@
+const fs=require('fs'),path=require('path');
+const here=__dirname,root=path.resolve(here,'..'),stage=path.join(here,'stage'),out=path.resolve(here,'../../../outputs/full-app-demo');
+fs.mkdirSync(stage,{recursive:true});fs.mkdirSync(out,{recursive:true});
+fs.cpSync(path.join(root,'src'),path.join(stage,'src'),{recursive:true});
+fs.cpSync(path.join(root,'assets'),path.join(stage,'assets'),{recursive:true});
+const unix=p=>p.replaceAll('\\','/');
+fs.writeFileSync(path.join(stage,'src/context/BleContext.js'),`export * from '${unix(path.join(here,'full-ble.jsx'))}';`);
+fs.writeFileSync(path.join(stage,'src/Components/BottomSheet/DirectMessageBottomSheet.js'),`export {default} from '${unix(path.join(here,'native-mock.jsx'))}';`);
+const runner=path.join(stage,'src/screens/WorkoutRunner.js');fs.writeFileSync(runner,fs.readFileSync(runner,'utf8').replace('  PermissionsAndroid,',''));
+let main=fs.readFileSync(path.join(here,'full-main.jsx'),'utf8').replaceAll("'../src/","'./stage/src/");
+fs.writeFileSync(path.join(here,'staged-main.jsx'),main);
+const mocks={'aws-amplify/api':'full-api.js','aws-amplify/auth':'full-api.js','aws-amplify/storage':'full-api.js','expo-web-browser':'browser-mock.js','expo-image-picker':'native-mock.jsx','@expo/vector-icons':'native-mock.jsx','@react-navigation/native':'native-mock.jsx','react-native-safe-area-context':'native-mock.jsx'};
+const args=[path.join(here,'staged-main.jsx'),'--bundle','--platform=browser','--format=iife','--loader:.js=jsx','--loader:.mp4=file','--loader:.png=file','--loader:.ttf=file','--asset-names=[name]-[hash]','--alias:react-native=react-native-web','--define:__DEV__=false','--define:process.env.NODE_ENV="production"','--resolve-extensions=.web.js,.web.jsx,.js,.jsx,.tsx,.ts,.json',`--outfile=${path.join(out,'app.js')}`,...Object.entries(mocks).map(([key,value])=>`--alias:${key}=${path.join(here,value)}`)];
+fs.writeFileSync(path.join(here,'build-args.json'),JSON.stringify(args));
+fs.copyFileSync(path.join(here,'full-index.html'),path.join(out,'index.html'));
+console.log('Demo source adapters prepared.');

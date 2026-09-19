@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, ScrollView } from 'react-native';
 import { generateClient } from 'aws-amplify/api';
@@ -45,20 +46,20 @@ const CREATE_WORKOUT_PRODUCT = /* GraphQL */ `
 
 const CREATE_STRIPE_PRODUCT = /* GraphQL */ `
   mutation CreateStripeProduct(
-    $trainer_id: ID!, 
-    $name: String!, 
-    $price: Float!, 
-    $description: String, 
+    $trainer_id: ID!,
+    $name: String!,
+    $price: Float!,
+    $description: String,
     $product_type: String,
     $workout_ids: [ID],
     $difficulty_level: String,
     $fitness_goal: String
   ) {
     createStripeProduct(
-      trainer_id: $trainer_id, 
-      name: $name, 
-      price: $price, 
-      description: $description, 
+      trainer_id: $trainer_id,
+      name: $name,
+      price: $price,
+      description: $description,
       product_type: $product_type,
       workout_ids: $workout_ids,
       difficulty_level: $difficulty_level,
@@ -73,6 +74,9 @@ const CREATE_STRIPE_PRODUCT = /* GraphQL */ `
 `;
 
 export default function WorkoutProductBuilder({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const trainer_id = route?.params?.trainer_id || null;
 
@@ -99,7 +103,7 @@ export default function WorkoutProductBuilder({ route, navigation }) {
           query: LIST_WORKOUTS_BY_TRAINER,
           variables: { trainer_id, limit: 100 },
         }).catch(() => ({ data: {} }));
-        
+
         // 2. Fetch by customer_id (current user)
         let customerRes = { data: {} };
         try {
@@ -131,7 +135,7 @@ export default function WorkoutProductBuilder({ route, navigation }) {
         if (mounted) {
           const trainerList = trainerRes?.data?.listWorkoutsByTrainer?.items || trainerRes?.data?.listWorkoutsByTrainer || [];
           const customerList = customerRes?.data?.listWorkoutsByCustomer?.items || customerRes?.data?.listWorkoutsByCustomer || [];
-          
+
           // Merge and dedup
           const all = [...trainerList, ...customerList];
           const unique = [];
@@ -142,10 +146,10 @@ export default function WorkoutProductBuilder({ route, navigation }) {
               unique.push(w);
             }
           }
-          
+
           // Sort by creation date (newest first)
           unique.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-          
+
           setWorkouts(unique);
         }
       } catch (err) {
@@ -218,7 +222,7 @@ export default function WorkoutProductBuilder({ route, navigation }) {
       console.log('Full Stripe Sync Response:', JSON.stringify(stripeRes, null, 2));
 
       const stripeData = stripeRes.data?.createStripeProduct;
-      
+
       if (!stripeData) {
         throw new Error('No data returned from createStripeProduct mutation.');
       }
@@ -247,61 +251,61 @@ export default function WorkoutProductBuilder({ route, navigation }) {
     return (
       <TouchableOpacity
         onPress={() => toggleWorkout(item.workout_id)}
-        style={[styles.workoutRow, checked && styles.workoutRowChecked]}
+        style={brandTheme.style([styles.workoutRow, checked && styles.workoutRowChecked])}
       >
-        <Text style={styles.workoutName}>{item.name || item.workout_id}</Text>
-        <Text style={styles.workoutMeta}>{item.created_at || ''}</Text>
-        <Text style={styles.checkbox}>{checked ? '✓ Included' : 'Tap to include'}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.workoutName)]}>{item.name || item.workout_id}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.workoutMeta)]}>{item.created_at || ''}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.checkbox)]}>{checked ? '✓ Included' : 'Tap to include'}</Text>
       </TouchableOpacity>
     );
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Build Workout Product</Text>
-      <Text style={styles.muted}>Trainer ID: {trainer_id || 'N/A'}</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Build Workout Product</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>Trainer ID: {trainer_id || 'N/A'}</Text>
 
-      <Text style={styles.label}>Product Name</Text>
-      <TextInput
-        style={styles.input}
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Product Name</Text>
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="E.g. 4-week Strength Pack"
         value={name}
         onChangeText={setName}
       />
 
-      <Text style={styles.label}>Intensity</Text>
-      <View style={styles.chipRow}>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Intensity</Text>
+      <View style={brandTheme.style(styles.chipRow)}>
         {['Light', 'Moderate', 'Intense'].map((opt) => (
           <TouchableOpacity
             key={opt}
             onPress={() => setIntensity(opt)}
-            style={[styles.chip, intensity === opt && styles.chipActive]}
+            style={brandTheme.style([styles.chip, intensity === opt && styles.chipActive])}
           >
-            <Text style={[styles.chipText, intensity === opt && styles.chipTextActive]}>{opt}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.chipText, intensity === opt && styles.chipTextActive])]}>{opt}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.label}>Fitness Goal</Text>
-      <TextInput
-        style={styles.input}
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Fitness Goal</Text>
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="E.g. Build Muscle, Endurance"
         value={fitnessGoal}
         onChangeText={setFitnessGoal}
       />
 
-      <Text style={styles.label}>Price (USD)</Text>
-      <TextInput
-        style={styles.input}
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Price (USD)</Text>
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="0.00"
         keyboardType="decimal-pad"
         value={price}
         onChangeText={setPrice}
       />
 
-      <Text style={styles.label}>Select Workouts to include</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Select Workouts to include</Text>
       {workouts.length === 0 ? (
-        <Text style={styles.muted}>No workouts found for this trainer.</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No workouts found for this trainer.</Text>
       ) : (
         <FlatList
           data={workouts}
@@ -312,17 +316,17 @@ export default function WorkoutProductBuilder({ route, navigation }) {
       )}
 
       <TouchableOpacity
-        style={[styles.saveButton, loading && { opacity: 0.6 }]}
+        style={brandTheme.style([styles.saveButton, loading && { opacity: 0.6 }])}
         disabled={loading}
         onPress={saveProduct}
       >
-        <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Product'}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.saveButtonText)]}>{loading ? 'Saving...' : 'Save Product'}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 8,

@@ -1,0 +1,346 @@
+{
+  "testedAt": "2026-09-19T17:33:07.109252-04:00",
+  "source": "Local merge/hardware-device-code, base 2ed172f plus uncommitted changes",
+  "unit": {
+    "passed": 12,
+    "failed": 0
+  },
+  "browser": [
+    {
+      "test": "Welcome to BIOPHLX",
+      "status": "PASS"
+    },
+    {
+      "test": "Sign in and get started",
+      "status": "PASS"
+    },
+    {
+      "test": "Meet your dashboard",
+      "status": "PASS"
+    },
+    {
+      "test": "Find your trainer",
+      "status": "PASS"
+    },
+    {
+      "test": "Explore a workout",
+      "status": "PASS"
+    },
+    {
+      "test": "Purchase with confidence",
+      "status": "PASS"
+    },
+    {
+      "test": "Your workout library",
+      "status": "PASS"
+    },
+    {
+      "test": "Learn how to wear the bands",
+      "status": "PASS"
+    },
+    {
+      "test": "Connect both bands",
+      "status": "PASS"
+    },
+    {
+      "test": "Choose an exercise",
+      "status": "PASS"
+    },
+    {
+      "test": "Confirm your placement",
+      "status": "PASS"
+    },
+    {
+      "test": "Hold still, then begin",
+      "status": "PASS"
+    },
+    {
+      "test": "See every rep",
+      "status": "PASS"
+    },
+    {
+      "test": "Explore your rep history",
+      "status": "PASS"
+    },
+    {
+      "test": "Review and save",
+      "status": "PASS"
+    },
+    {
+      "test": "See where the work went",
+      "status": "PASS"
+    },
+    {
+      "test": "Choose a day on the calendar",
+      "status": "PASS"
+    },
+    {
+      "test": "Open that day\u2019s performance",
+      "status": "PASS"
+    },
+    {
+      "test": "Compare your training",
+      "status": "PASS"
+    },
+    {
+      "test": "Create your own plan",
+      "status": "PASS"
+    },
+    {
+      "test": "Ready for your next session",
+      "status": "PASS"
+    },
+    {
+      "test": "Your progress, in your style",
+      "status": "PASS"
+    },
+    {
+      "test": "Signup, confirmation, login and profile completion (mock auth)",
+      "status": "PASS"
+    },
+    {
+      "test": "Perform saved workout, persist rep and both band snapshots (mock AWS/BLE)",
+      "status": "PASS"
+    },
+    {
+      "test": "No browser runtime errors in extended flows",
+      "status": "PASS"
+    },
+    {
+      "test": "Calendar date filters muscle chips and chart",
+      "status": "PASS"
+    },
+    {
+      "test": "Set expands to individual rep scores",
+      "status": "PASS"
+    },
+    {
+      "test": "Rep expands to separate left and right metrics",
+      "status": "PASS"
+    },
+    {
+      "test": "Light and dark rendering",
+      "status": "PASS"
+    },
+    {
+      "test": "Legacy records show unavailable band data",
+      "status": "PASS"
+    },
+    {
+      "test": "Empty date does not borrow another day",
+      "status": "PASS"
+    }
+  ],
+  "backend": [
+    {
+      "test": "App-config API key: exercise catalog",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Unauthenticated request rejected",
+      "status": "PASS",
+      "detail": "Request denied without authentication"
+    },
+    {
+      "test": "Cognito password sign-in",
+      "status": "PASS",
+      "detail": "Temporary test account authenticated; messages suppressed."
+    },
+    {
+      "test": "Cognito token refresh",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Cognito wrong-password rejection",
+      "status": "PASS",
+      "detail": "Incorrect password rejected."
+    },
+    {
+      "test": "Cognito create User",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Cognito create Customer",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Cognito create Workout",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Profile read after create",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Profile update",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Cognito Dashboard sessions",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "API-key authorization probe Dashboard sessions",
+      "status": "PASS",
+      "detail": "Expected denial: protected data requires a Cognito user token."
+    },
+    {
+      "test": "Cognito Saved workout library",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "API-key authorization probe Saved workout library",
+      "status": "PASS",
+      "detail": "Expected denial: protected data requires a Cognito user token."
+    },
+    {
+      "test": "Cognito Trainer directory",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "API-key authorization probe Trainer directory",
+      "status": "PASS",
+      "detail": "Expected denial: protected data requires a Cognito user token."
+    },
+    {
+      "test": "Cognito Purchased permissions",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "API-key authorization probe Purchased permissions",
+      "status": "PASS",
+      "detail": "Expected denial: protected data requires a Cognito user token."
+    },
+    {
+      "test": "Cognito exercise catalog",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Create WorkoutItem",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Create Session",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Create SessionItem",
+      "status": "FAIL",
+      "detail": "Stronger follow-up assertion found null mutation result and no saved standalone exercise record."
+    },
+    {
+      "test": "Create SessionItemSet",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Create SessionItemRep",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Read saved workout items",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Read rep metrics and combined score",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Read recorded session on dashboard",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Trainer products query contract",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Cognito sign-out",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Cognito identity exchange",
+      "status": "PASS",
+      "detail": "Authenticated identity issued temporary storage credentials."
+    },
+    {
+      "test": "S3 profile upload with app identity",
+      "status": "PASS",
+      "detail": "Unique temporary account profile path accepted."
+    },
+    {
+      "test": "S3 app public image URL",
+      "status": "PASS",
+      "detail": "Uploaded bytes returned from the app URL pattern."
+    },
+    {
+      "test": "Stripe Lambda configuration",
+      "status": "PASS",
+      "detail": "State=Active; key modes={\"STRIPE_SECRET_KEY\": \"live\"}"
+    },
+    {
+      "test": "Create schema-compatible rep 1",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Create schema-compatible rep 2",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Both bands persist independently",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Read saved scores and Float metrics",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Saved-workout session item create",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Saved-workout session item readback",
+      "status": "PASS",
+      "detail": "Live response matched expected contract."
+    },
+    {
+      "test": "Standalone session exercise readback",
+      "status": "FAIL",
+      "detail": "No exercise returned after createSessionItem without a workout ID."
+    }
+  ],
+  "backendCounts": {
+    "PASS": 38,
+    "FAIL": 2
+  },
+  "releaseVerdict": "NOT READY: standalone history persistence fails; production payment safety and end-to-end validation outstanding.",
+  "limitations": [
+    "Browser uses simulated authentication, AWS, BLE and checkout; live AWS tested separately.",
+    "No physical device, native iOS/Android build, signup email or reset-email delivery test.",
+    "Stripe live configuration inspected only; no payment or webhook-to-entitlement transaction."
+  ]
+}

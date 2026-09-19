@@ -1,3 +1,5 @@
+import BrandButton from '../Components/Button/BrandButton';
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import { TutorialCard } from '../Components/band-setup/BandSetup';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
@@ -167,6 +169,9 @@ const normalizeKey = (val) => {
 };
 
 export default function HomeScreen({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const { fromClientList, clientData } = route?.params || {};
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [bodyData, setBodyData] = useState([]);
@@ -266,16 +271,16 @@ export default function HomeScreen({ route, navigation }) {
   const renderToggleGroup = (slot, key, options) => {
     const currentValue = deviceSettings?.[slot]?.[key];
     return (
-      <View style={styles.deviceToggleGroup}>
+      <View style={brandTheme.style(styles.deviceToggleGroup)}>
         {options.map((option) => {
           const selected = currentValue === option.value;
           return (
             <Pressable
               key={`${slot}-${key}-${option.label}`}
-              style={[styles.deviceToggle, selected && styles.deviceToggleActive]}
+              style={brandTheme.style([styles.deviceToggle, selected && styles.deviceToggleActive])}
               onPress={() => updateDeviceSetting(slot, key, option.value)}
             >
-              <Text style={[styles.deviceToggleText, selected && styles.deviceToggleTextActive]}>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.deviceToggleText, selected && styles.deviceToggleTextActive])]}>
                 {option.label}
               </Text>
             </Pressable>
@@ -289,38 +294,38 @@ export default function HomeScreen({ route, navigation }) {
     const isOpen = openDeviceSettings === slot;
     const batteryLevel = batteryLevels?.[slot];
     return (
-      <View style={styles.sensorBox}>
-        <View style={styles.sensorRow}>
-          <View style={styles.sensorTextWrap}>
-            <Text style={styles.sensorLabel}>
+      <View style={brandTheme.style(styles.sensorBox)}>
+        <View style={brandTheme.style(styles.sensorRow)}>
+          <View style={brandTheme.style(styles.sensorTextWrap)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sensorLabel)]}>
               {label}
-              <Text style={styles.sensorBattery}>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sensorBattery)]}>
                 {'  '}Battery: {Number.isFinite(batteryLevel) ? `${batteryLevel}%` : '--'}
               </Text>
             </Text>
-            <Text style={styles.sensorStatus}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sensorStatus)]}>
               {device ? device.name || device.id : 'Not connected'}
             </Text>
           </View>
-          <View style={styles.sensorActions}>
+          <View style={brandTheme.style(styles.sensorActions)}>
             <Pressable
-              style={[styles.flashButton, !device && styles.sensorButtonDisabled]}
+              style={brandTheme.style([styles.flashButton, !device && styles.sensorButtonDisabled])}
               disabled={!device}
               onPress={() => flashDevice(slot)}
             >
-              <FontAwesome5 name="bolt" color={device ? '#fff' : '#64748b'} size={15} />
+              <FontAwesome5 name="bolt" color={brandTheme.color(device ? '#fff' : '#64748b')} size={15} />
             </Pressable>
             {device ? (
-              <Pressable style={[styles.sensorButton, styles.sensorButtonDanger]} onPress={() => disconnect(slot)}>
-                <Text style={styles.sensorButtonText}>Disconnect</Text>
+              <Pressable style={brandTheme.style([styles.sensorButton, styles.sensorButtonDanger])} onPress={() => disconnect(slot)}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sensorButtonText)]}>Disconnect</Text>
               </Pressable>
             ) : (
               <Pressable
-                style={[styles.sensorButton, connecting && styles.sensorButtonDisabled]}
+                style={brandTheme.style([styles.sensorButton, connecting && styles.sensorButtonDisabled])}
                 disabled={connecting}
                 onPress={() => scanAndConnect(slot)}
               >
-                <Text style={[styles.sensorButtonText, connecting && styles.sensorButtonTextDisabled]}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.sensorButtonText, connecting && styles.sensorButtonTextDisabled])]}>
                   {connecting ? 'Scanning...' : 'Connect'}
                 </Text>
               </Pressable>
@@ -328,21 +333,21 @@ export default function HomeScreen({ route, navigation }) {
           </View>
         </View>
         <Pressable
-          style={styles.deviceDropdownButton}
+          style={brandTheme.style(styles.deviceDropdownButton)}
           onPress={() => setOpenDeviceSettings((prev) => (prev === slot ? null : slot))}
         >
-          <Text style={styles.deviceDropdownText}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.deviceDropdownText)]}>
             Device setup: {isOpen ? 'Hide' : 'Show'}
           </Text>
         </Pressable>
         {isOpen ? (
-          <View style={styles.deviceDropdown}>
-            <Text style={styles.deviceOptionLabel}>Side</Text>
+          <View style={brandTheme.style(styles.deviceDropdown)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.deviceOptionLabel)]}>Side</Text>
             {renderToggleGroup(slot, 'side', [
               { label: 'Left', value: ExerciseSide.left.value },
               { label: 'Right', value: ExerciseSide.right.value },
             ])}
-            <Text style={styles.deviceOptionLabel}>Placement</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.deviceOptionLabel)]}>Placement</Text>
             {renderToggleGroup(slot, 'limb', [
               { label: 'Leg', value: ExerciseLimb.leg.value },
               { label: 'Arm', value: ExerciseLimb.arm.value },
@@ -904,51 +909,51 @@ export default function HomeScreen({ route, navigation }) {
     const details = sessionDetailsMap[session.session_id] || [];
     const loadingDetails = sessionLoadingMap[session.session_id];
     return (
-      <View key={`home-sess-${session.session_id}`} style={styles.sessCard}>
-        <Pressable onPress={() => toggleSession(session.session_id)} style={styles.sessHeader}>
+      <View key={`home-sess-${session.session_id}`} style={brandTheme.style(styles.sessCard)}>
+        <Pressable onPress={() => toggleSession(session.session_id)} style={brandTheme.style(styles.sessHeader)}>
           <View>
-            <Text style={styles.sessTitle}>{formatDate(session.workout_date)}</Text>
-            <Text style={styles.sessMeta}>Created: {formatDate(session.created_at)}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessTitle)]}>{formatDate(session.workout_date)}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>Created: {formatDate(session.created_at)}</Text>
           </View>
-          <Text style={styles.sessExpand}>{isOpen ? 'Hide' : 'View'}</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessExpand)]}>{isOpen ? 'Hide' : 'View'}</Text>
         </Pressable>
         {isOpen && (
-          <View style={styles.sessBody}>
+          <View style={brandTheme.style(styles.sessBody)}>
             {loadingDetails ? (
               <ActivityIndicator />
             ) : details.length === 0 ? (
-              <Text style={styles.muted}>No session items recorded.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No session items recorded.</Text>
             ) : (
               details.map((item) => {
                 return (
-                  <View key={`${session.session_id}-${item.session_item_index}`} style={styles.sessItem}>
-                    <Text style={styles.sessItemTitle}>
+                  <View key={`${session.session_id}-${item.session_item_index}`} style={brandTheme.style(styles.sessItem)}>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessItemTitle)]}>
                       Exercise {item.session_item_index}: {item.exercise_id || 'Unknown Exercise'}
                     </Text>
-                    <Text style={styles.sessMeta}>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
                       Muscle: {item.muscle_focus || 'N/A'} | Total Mom: {item.totalMom?.toFixed?.(1) || item.totalMom || 0}
                     </Text>
-                    <Text style={styles.sessMeta}>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
                       Sets: {item.sets?.length || 0} | Reps: {item.reps?.length || 0} | Workout: {item.workout_id || 'N/A'}
                     </Text>
                     {item.sets?.length ? (
-                      <View style={styles.sessSetList}>
+                      <View style={brandTheme.style(styles.sessSetList)}>
                         {item.sets.map((s, idx) => (
-                          <Text key={idx} style={styles.sessMeta}>
+                          <Text key={idx} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
                             Set {s.session_item_set_index ?? idx + 1}: Reps {s.reps_completed ?? 'N/A'} | Mom {s.momentum ?? 'N/A'}
                           </Text>
                         ))}
                       </View>
                     ) : null}
                     {item.reps?.length ? (
-                      <View style={styles.sessSetList}>
+                      <View style={brandTheme.style(styles.sessSetList)}>
                         {item.reps.slice(0, 3).map((r, idx) => (
-                          <Text key={idx} style={styles.sessMeta}>
+                          <Text key={idx} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
                             Rep {r.session_item_rep_index ?? idx + 1}: Mom {r.momentum ?? 'N/A'}
                           </Text>
                         ))}
                         {item.reps.length > 3 ? (
-                          <Text style={styles.sessMeta}>+{item.reps.length - 3} more reps</Text>
+                          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>+{item.reps.length - 3} more reps</Text>
                         ) : null}
                       </View>
                     ) : null}
@@ -1014,65 +1019,65 @@ export default function HomeScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.safe}>
+    <View style={brandTheme.style(styles.safe)}>
       <ScrollView contentContainerStyle={styles.container}>
         <TutorialCard />
         {fromClientList && (
-          <View style={styles.topDesignContainer}>
-            <View style={styles.actionRow}>
+          <View style={brandTheme.style(styles.topDesignContainer)}>
+            <View style={brandTheme.style(styles.actionRow)}>
               <TouchableOpacity
-                style={styles.bubbleButton}
+                style={brandTheme.style(styles.bubbleButton)}
                 onPress={() => navigation.navigate('WorkoutLibrary', {
                   clientData
                 })}
               >
-                <View style={styles.bubble}>
-                  <Text style={styles.bubbleText}>Send{"\n"}Workout</Text>
+                <View style={brandTheme.style(styles.bubble)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.bubbleText)]}>Send{"\n"}Workout</Text>
                 </View>
-                <View style={styles.bubbleTailLeft} />
+                <View style={brandTheme.style(styles.bubbleTailLeft)} />
               </TouchableOpacity>
 
               <View
-                style={[styles.profileContainer, { justifyContent: 'center', alignItems: 'center' }]}
+                style={brandTheme.style([styles.profileContainer, { justifyContent: 'center', alignItems: 'center' }])}
               >
                 {clientData?.Demographic?.profile_image_url ? (
                   <Image
                     source={{ uri: clientData.Demographic.profile_image_url }}
-                    style={styles.dashboardProfileImage}
+                    style={brandTheme.style(styles.dashboardProfileImage)}
                   />
                 ) : (
-                  <Ionicons name="person" size={54} color="#000" />
+                  <Ionicons name="person" size={54} color={brandTheme.color("#000")} />
                 )}
               </View>
 
               <TouchableOpacity
-                style={styles.bubbleButton}
+                style={brandTheme.style(styles.bubbleButton)}
                 onPress={() => setIsMessageSheetVisible(true)}
               >
-                <View style={styles.bubble}>
-                  <Text style={styles.bubbleText}>Send{"\n"}Message</Text>
+                <View style={brandTheme.style(styles.bubble)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.bubbleText)]}>Send{"\n"}Message</Text>
                 </View>
-                <View style={styles.bubbleTailRight} />
+                <View style={brandTheme.style(styles.bubbleTailRight)} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.clientNameText}>{clientData?.Demographic?.name || 'Client'}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.clientNameText)]}>{clientData?.Demographic?.name || 'Client'}</Text>
           </View>
         )}
 
         {!fromClientList &&
           <>
-            <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Choose where to go</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Welcome back</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.subtitle)]}>Choose where to go</Text>
           </>
         }
 
-        <View style={styles.bluetoothCard}>
-          <Text style={styles.bluetoothTitle}>Bluetooth Sensors</Text>
+        <View style={brandTheme.style(styles.bluetoothCard)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.bluetoothTitle)]}>Bluetooth Sensors</Text>
           {renderSensorRow('Device 1', connectedDevice, 'primary')}
           {renderSensorRow('Device 2', secondaryDevice, 'secondary')}
         </View>
 
-        <View style={styles.grid}>
+        <View style={brandTheme.style(styles.grid)}>
           {(() => {
             const base = [...actions];
             if (trainerId && userRole === 'trainer' && !fromClientList) {
@@ -1083,11 +1088,11 @@ export default function HomeScreen({ route, navigation }) {
               return (
                 <TouchableOpacity
                   key={action.key}
-                  style={[
+                  style={brandTheme.style([
                     styles.card,
                     action.accent && styles.cardAccent,
                     isCardDisabled && { backgroundColor: '#f1f5f9', opacity: 0.5 }
-                  ]}
+                  ])}
                   onPress={() => {
                     if (!isCardDisabled) {
                       handleAction(action.key);
@@ -1095,11 +1100,11 @@ export default function HomeScreen({ route, navigation }) {
                   }}
                   disabled={isCardDisabled}
                 >
-                  <Text style={[
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style([
                     styles.cardText,
                     action.accent && styles.cardTextAccent,
                     isCardDisabled && { color: '#94a3b8' }
-                  ]}>
+                  ])]}>
                     {action.label}
                   </Text>
                 </TouchableOpacity>
@@ -1108,20 +1113,20 @@ export default function HomeScreen({ route, navigation }) {
           })()}
         </View>
 
-        <View style={styles.mapCard}>
-          <View style={styles.rowMomentumHeading}>
-            <Text style={styles.mapTitle}>Load Distribution</Text>
-            <View style={styles.mapHeaderRight}>
+        <View style={brandTheme.style(styles.mapCard)}>
+          <View style={brandTheme.style(styles.rowMomentumHeading)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.mapTitle)]}>Load Distribution</Text>
+            <View style={brandTheme.style(styles.mapHeaderRight)}>
               {['week', 'month', 'year'].map((opt) => (
                 <TouchableOpacity
                   key={opt}
                   onPress={() => handleRangeChange(opt)}
-                  style={[
+                  style={brandTheme.style([
                     styles.rangeChip,
                     range === opt && styles.rangeChipActive,
-                  ]}
+                  ])}
                 >
-                  <Text style={[styles.rangeChipText, range === opt && styles.rangeChipTextActive]}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.rangeChipText, range === opt && styles.rangeChipTextActive])]}>
                     {opt === 'week' ? '1W' : opt === 'month' ? '1M' : '1Y'}
                   </Text>
                 </TouchableOpacity>
@@ -1129,7 +1134,7 @@ export default function HomeScreen({ route, navigation }) {
             </View>
           </View>
 
-          <View style={styles.bodyHighlighterContainer}>
+          <View style={brandTheme.style(styles.bodyHighlighterContainer)}>
             <Body
               data={bodyData}
               gender={userGender === 'female' ? 'female' : 'male'}
@@ -1149,25 +1154,25 @@ export default function HomeScreen({ route, navigation }) {
           </View>
 
           {bodyData.length ? (
-            <View style={styles.muscleList}>
+            <View style={brandTheme.style(styles.muscleList)}>
               {bodyData.map((muscle, index) => (
                 <View
                   key={index}
-                  style={[styles.muscleChip, getMuscleBoxColor(muscle.percentage)]}
+                  style={brandTheme.style([styles.muscleChip, getMuscleBoxColor(muscle.percentage)])}
                 >
-                  <Text style={styles.muscleName}>{muscle.name}</Text>
-                  <Text style={styles.musclePct}>{muscle.percentage}%</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muscleName)]}>{muscle.name}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.musclePct)]}>{muscle.percentage}%</Text>
                 </View>
               ))}
             </View>
           ) : (
-            <Text style={styles.muted}>No muscle data for this date yet.</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No muscle data for this date yet.</Text>
           )}
 
           {muscleMomentumList.length ? (
-            <View style={styles.momentumList}>
+            <View style={brandTheme.style(styles.momentumList)}>
               {muscleMomentumList.map((m, idx) => (
-                <Text key={idx} style={styles.musclePct}>
+                <Text key={idx} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.musclePct)]}>
                   {m.name}: {m.percent}% ({m.total.toFixed(1)})
                 </Text>
               ))}
@@ -1175,36 +1180,36 @@ export default function HomeScreen({ route, navigation }) {
           ) : null}
 
           {totalMomentumData ? (
-            <View style={styles.momentumRow}>
-              <View style={styles.momentumItem}>
-                <FontAwesome5 name="dumbbell" color="#000" size={20} />
-                <Text style={styles.momentumValue}>{totalMomentumData}</Text>
-                <Text style={styles.momentumLabel}>Momentum</Text>
+            <View style={brandTheme.style(styles.momentumRow)}>
+              <View style={brandTheme.style(styles.momentumItem)}>
+                <FontAwesome5 name="dumbbell" color={brandTheme.color("#000")} size={20} />
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumValue)]}>{totalMomentumData}</Text>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumLabel)]}>Momentum</Text>
               </View>
-              <View style={styles.momentumItem}>
-                <FontAwesome5 name="trophy" color="#000" size={20} />
-                <Text style={styles.momentumValue}>{workoutDetail.length}</Text>
-                <Text style={styles.momentumLabel}>Exercises</Text>
+              <View style={brandTheme.style(styles.momentumItem)}>
+                <FontAwesome5 name="trophy" color={brandTheme.color("#000")} size={20} />
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumValue)]}>{workoutDetail.length}</Text>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumLabel)]}>Exercises</Text>
               </View>
             </View>
           ) : null}
         </View>
 
-        <View style={styles.homeCalCard}>
-          <View style={styles.homeCalHeader}>
+        <View style={brandTheme.style(styles.homeCalCard)}>
+          <View style={brandTheme.style(styles.homeCalHeader)}>
             <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
-              <Text style={styles.homeCalNav}>{'<'}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalNav)]}>{'<'}</Text>
             </TouchableOpacity>
-            <Text style={styles.homeCalTitle}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalTitle)]}>
               {monthDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </Text>
             <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
-              <Text style={styles.homeCalNav}>{'>'}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalNav)]}>{'>'}</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.homeCalGrid}>
+          <View style={brandTheme.style(styles.homeCalGrid)}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <Text key={d} style={styles.homeCalDow}>{d}</Text>
+              <Text key={d} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalDow)]}>{d}</Text>
             ))}
             {(() => {
               const year = monthDate.getFullYear();
@@ -1213,7 +1218,7 @@ export default function HomeScreen({ route, navigation }) {
               const daysInMonth = new Date(year, month + 1, 0).getDate();
               const cells = [];
               for (let i = 0; i < firstDay; i += 1) {
-                cells.push(<View key={`pad-${i}`} style={styles.homeCalCell} />);
+                cells.push(<View key={`pad-${i}`} style={brandTheme.style(styles.homeCalCell)} />);
               }
               const sessionDates = new Set(
                 sessions
@@ -1228,17 +1233,17 @@ export default function HomeScreen({ route, navigation }) {
                 cells.push(
                   <TouchableOpacity
                     key={dateStr}
-                    style={[
+                    style={brandTheme.style([
                       styles.homeCalCell,
                       isSelected && styles.homeCalCellSelected,
-                    ]}
+                    ])}
                     onPress={() => setSelectedDate(dateStr)}
                   >
-                    <Text style={[styles.homeCalCellText, isSelected && styles.homeCalCellTextSelected]}>{day}</Text>
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.homeCalCellText, isSelected && styles.homeCalCellTextSelected])]}>{day}</Text>
                     {dayMomentum !== undefined ? (
-                      <Text style={styles.homeCalMomentum}>{Math.round(dayMomentum)}</Text>
+                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalMomentum)]}>{Math.round(dayMomentum)}</Text>
                     ) : null}
-                    {hasSession ? <View style={styles.homeCalDot} /> : null}
+                    {hasSession ? <View style={brandTheme.style(styles.homeCalDot)} /> : null}
                   </TouchableOpacity>
                 );
               }
@@ -1247,48 +1252,48 @@ export default function HomeScreen({ route, navigation }) {
           </View>
         </View>
 
-        <View style={styles.sessionSection}>
-          <Text style={styles.sessionSectionTitle}>Recent Sessions</Text>
+        <View style={brandTheme.style(styles.sessionSection)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessionSectionTitle)]}>Recent Sessions</Text>
           {sessionsLoading ? <ActivityIndicator /> : null}
-          {sessionsError ? <Text style={styles.errorText}>{sessionsError}</Text> : null}
+          {sessionsError ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.errorText)]}>{sessionsError}</Text> : null}
           {!sessionsLoading && !sessions.length ? (
-            <Text style={styles.muted}>No sessions recorded yet.</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No sessions recorded yet.</Text>
           ) : null}
           {sessions.slice(0, 5).map(renderSession)}
         </View>
 
         {!fromClientList && (
-          <TouchableOpacity onPress={backToAuth} style={styles.signOut}>
-            <Text style={styles.signOutText}>Sign out</Text>
+          <TouchableOpacity onPress={backToAuth} style={brandTheme.style(styles.signOut)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.signOutText)]}>Sign out</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
 
       <Modal visible={showDeviceModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
+        <View style={brandTheme.style(styles.modalOverlay)}>
+          <View style={brandTheme.style(styles.modalCard)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.modalTitle)]}>
               {deviceSlotToConnect === 'secondary'
                 ? 'Select Device 2'
                 : 'Select Device 1'}
             </Text>
             {connecting ? (
-              <Text style={styles.modalText}>Scanning for nearby Bluetooth devices...</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.modalText)]}>Scanning for nearby Bluetooth devices...</Text>
             ) : scannedDevices.length === 0 ? (
-              <Text style={styles.modalText}>No devices found. Try scanning again.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.modalText)]}>No devices found. Try scanning again.</Text>
             ) : null}
             <FlatList
-              style={styles.deviceList}
+              style={brandTheme.style(styles.deviceList)}
               data={scannedDevices}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => handleDeviceSelect(item)} style={styles.deviceRow}>
-                  <Text style={styles.deviceName}>{item.name || 'Unnamed device'}</Text>
-                  <Text style={styles.deviceId}>{item.id}</Text>
+                <TouchableOpacity onPress={() => handleDeviceSelect(item)} style={brandTheme.style(styles.deviceRow)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.deviceName)]}>{item.name || 'Unnamed device'}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.deviceId)]}>{item.id}</Text>
                 </TouchableOpacity>
               )}
             />
-            <Button title="Cancel" onPress={cancelScan} />
+            <BrandButton color={brandTheme.colors.primary} title="Cancel" onPress={cancelScan} />
           </View>
         </View>
       </Modal>
@@ -1303,7 +1308,7 @@ export default function HomeScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#ffffff',

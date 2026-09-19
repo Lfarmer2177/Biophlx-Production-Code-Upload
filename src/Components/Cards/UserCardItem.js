@@ -1,9 +1,13 @@
+import { useBIOPHLXTheme } from '../../Theme/BIOPHLXTheme';
 import { StyleSheet, Text, View, TouchableOpacity, Image, Button } from 'react-native';
 import React from 'react';
 import Colors from '../../Theme/Colors';
 import { useNavigation } from '@react-navigation/native';
 
 const UserCardItem = ({ item, activeUserData, permissionOnPress, onPress, children }) => {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const navigation = useNavigation(); // Access the navigation object
 
   const Demographic = item.Demographic;
@@ -11,35 +15,35 @@ const UserCardItem = ({ item, activeUserData, permissionOnPress, onPress, childr
 
 
   return (
-    <TouchableOpacity onPress={onPress} style={styles.userCard}>
+    <TouchableOpacity onPress={onPress} style={brandTheme.style(styles.userCard)}>
       <Image
         source={{ uri: 'https://via.placeholder.com/50' }}
-        style={styles.profileImage}
+        style={brandTheme.style(styles.profileImage)}
       />
-      <View style={styles.userInfo}>
-        <Text style={styles.titleMainHeading}>
-          Name: <Text style={styles.titleSubHeading}>{Demographic.name}</Text>
+      <View style={brandTheme.style(styles.userInfo)}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.titleMainHeading)]}>
+          Name: <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.titleSubHeading)]}>{Demographic.name}</Text>
         </Text>
-        <Text style={[styles.titleMainHeading, { fontSize: 15 }]}>
-          Fitness Focus: <Text style={[styles.titleSubHeading, { fontSize: 14 }]}>{FitnessGoals.goals}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleMainHeading, { fontSize: 15 }])]}>
+          Fitness Focus: <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 14 }])]}>{FitnessGoals.goals}</Text>
         </Text>
-        <Text style={[styles.titleMainHeading, { fontSize: 15 }]}>
-          Location: <Text style={[styles.titleSubHeading, { fontSize: 14 }]}>{Demographic.state}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleMainHeading, { fontSize: 15 }])]}>
+          Location: <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 14 }])]}>{Demographic.state}</Text>
         </Text>
-        <Text style={[styles.titleMainHeading, { fontSize: 15 }]}>
-          Age: <Text style={[styles.titleSubHeading, { fontSize: 14 }]}>{Demographic.age}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleMainHeading, { fontSize: 15 }])]}>
+          Age: <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 14 }])]}>{Demographic.age}</Text>
         </Text>
-         <Text style={[styles.titleMainHeading, { fontSize: 15 }]}>
-          Workout Purchased: <Text style={[styles.titleSubHeading, { fontSize: 14 }]}>{Demographic.workoutPurchased}</Text>
+         <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleMainHeading, { fontSize: 15 }])]}>
+          Workout Purchased: <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 14 }])]}>{Demographic.workoutPurchased}</Text>
         </Text>
-         <Text style={[styles.titleMainHeading, { fontSize: 15 }]}>
-          Service Performed: <Text style={[styles.titleSubHeading, { fontSize: 14 }]}>{Demographic.servicePerformed}</Text>
+         <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleMainHeading, { fontSize: 15 }])]}>
+          Service Performed: <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 14 }])]}>{Demographic.servicePerformed}</Text>
         </Text>
-         <Text style={[styles.titleSubHeading, { fontSize: 15 }]}>
-          Last Workout Performed: <Text style={[styles.titleSubHeading, { fontSize: 14 }]}>{Demographic.lastWorkoutPerformed}</Text>
+         <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 15 }])]}>
+          Last Workout Performed: <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 14 }])]}>{Demographic.lastWorkoutPerformed}</Text>
         </Text>
-         <Text style={[styles.titleSubHeading, { fontSize: 15 }]}>
-          Service EndDate: <Text style={[styles.titleSubHeading, { fontSize: 14 }]}>{Demographic.serviceEndDate}</Text>
+         <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 15 }])]}>
+          Service EndDate: <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.titleSubHeading, { fontSize: 14 }])]}>{Demographic.serviceEndDate}</Text>
         </Text>
 
         {/* <TouchableOpacity style={styles.button} onPress={permissionOnPress}>
@@ -49,7 +53,7 @@ const UserCardItem = ({ item, activeUserData, permissionOnPress, onPress, childr
         </TouchableOpacity> */}
       {/* Render children */}
       {children}
-        
+
 
       </View>
     </TouchableOpacity>
@@ -58,7 +62,7 @@ const UserCardItem = ({ item, activeUserData, permissionOnPress, onPress, childr
 
 export default UserCardItem;
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',

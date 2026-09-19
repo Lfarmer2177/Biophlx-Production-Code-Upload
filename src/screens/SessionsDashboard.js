@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import ExerciseHistory, { MuscleBreakdown } from '../Components/history/HistoryCards';
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -78,6 +80,9 @@ const bodyParts = {
 };
 
 const MusclePieChart = ({ segments, size = 120 }) => {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   if (!segments.length) return null;
   const radius = size / 2;
   let startAngle = 0;
@@ -95,19 +100,19 @@ const MusclePieChart = ({ segments, size = 120 }) => {
     return { d, color: pieColors[idx % pieColors.length], label: seg.name, percent: pct };
   });
   return (
-    <View style={{ alignItems: 'center' }}>
-      <Svg width={size} height={size} style={{ marginVertical: 8 }}>
+    <View style={brandTheme.style({ alignItems: 'center' })}>
+      <Svg width={size} height={size} style={brandTheme.style({ marginVertical: 8 })}>
         <G>
           {paths.map((p, idx) => (
             <Path key={idx} d={p.d} fill={p.color} />
           ))}
         </G>
       </Svg>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+      <View style={brandTheme.style({ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' })}>
         {paths.map((p, idx) => (
-          <View key={`legend-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: p.color }} />
-            <Text style={{ fontSize: 12, color: '#0f172a' }}>
+          <View key={`legend-${idx}`} style={brandTheme.style({ flexDirection: 'row', alignItems: 'center', gap: 4 })}>
+            <View style={brandTheme.style({ width: 10, height: 10, borderRadius: 5, backgroundColor: p.color })} />
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ fontSize: 12, color: '#0f172a' })]}>
               {p.label} {p.percent.toFixed(0)}%
             </Text>
           </View>
@@ -127,6 +132,9 @@ const LIST_CUSTOMERS_BY_USER = /* GraphQL */ `
 `;
 
 export default function SessionsDashboard({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const { fromClientList, clientData } = route.params || {};
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [customerId, setCustomerId] = useState(null);
@@ -307,10 +315,17 @@ export default function SessionsDashboard({ route, navigation }) {
           }
         }
 
+        const allReps = [];
+        let nextToken;
+        do {
+          const {data} = await client.graphql({query:listSessionItemRepsQuery, variables:{session_id,limit:500,nextToken}});
+          allReps.push(...asList(data?.listSessionItemReps));
+          nextToken=data?.listSessionItemReps?.nextToken;
+        } while(nextToken);
         const detailedItems = await Promise.all(
           items.map(async (item) => {
             const sets = setsByIndex[item.session_item_index] || [];
-            const reps = []; // reps are not pulled per request
+            const reps = allReps.filter(rep => Number(rep.session_item_index) === Number(item.session_item_index));
             return { ...item, sets, reps };
           })
         );
@@ -428,9 +443,11 @@ export default function SessionsDashboard({ route, navigation }) {
     [asList, client]
   );
 
+  const distributionRun = useRef(0);
   const buildBodyHighlight = useCallback(async () => {
+    const run = ++distributionRun.current;
     try {
-      const exMap = exerciseMap;
+      const exMap = {...exerciseMap};
       const year = monthDate.getFullYear();
       const month = monthDate.getMonth();
       const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -441,12 +458,6 @@ export default function SessionsDashboard({ route, navigation }) {
               const dateStr = normalizeDate(s.workout_date || s.created_at);
               return dateStr && dateStr.startsWith(monthPrefix);
             });
-      if (!targetSessions.length && sessions.length) {
-        const sorted = [...sessions].sort(
-          (a, b) => new Date(b.workout_date || b.created_at) - new Date(a.workout_date || a.created_at)
-        );
-        targetSessions = [sorted[0]];
-      }
       if (!targetSessions.length) {
         setBodyData([]);
         setMuscleMomentumList([]);
@@ -484,6 +495,12 @@ export default function SessionsDashboard({ route, navigation }) {
           }
         }
 
+        for (const item of items) {
+          if (item.exercise_id && !exMap[item.exercise_id]) {
+            const {data} = await client.graphql({query:getExerciseQuery,variables:{exercise_id:item.exercise_id}});
+            if (data?.getExercise) exMap[item.exercise_id]=data.getExercise;
+          }
+        }
         items.forEach((item) => {
           const itemReps = reps.filter((r) => r?.session_item_index === item.session_item_index);
           let momentum = itemReps.reduce((sum, r) => sum + (Number(r?.momentum) || 0), 0);
@@ -542,6 +559,7 @@ export default function SessionsDashboard({ route, navigation }) {
         })
         .filter(Boolean);
 
+      if (run !== distributionRun.current) return;
       setBodyData(newBodyData);
       setTotalMomentumData(Number(totalMomentum.toFixed(1)));
       const momentumList = Object.keys(muscleTotalsObj)
@@ -553,6 +571,7 @@ export default function SessionsDashboard({ route, navigation }) {
         .sort((a, b) => b.total - a.total);
       setMuscleMomentumList(momentumList);
     } catch (err) {
+      if (run !== distributionRun.current) return;
       console.log('Body highlight build failed', err);
       setBodyData([]);
       setMuscleMomentumList([]);
@@ -611,11 +630,11 @@ export default function SessionsDashboard({ route, navigation }) {
     const details = sessionDetailsMap[session.session_id] || [];
     const loadingDetails = sessionLoadingMap[session.session_id];
     return (
-      <View key={session.session_id} style={styles.card}>
-        <Pressable onPress={() => toggleSession(session.session_id)} style={styles.sessionHeader}>
+      <View key={session.session_id} style={brandTheme.style(styles.card)}>
+        <Pressable onPress={() => toggleSession(session.session_id)} style={brandTheme.style(styles.sessionHeader)}>
           <View>
-            <Text style={styles.sessionTitle}>{formatDate(session.workout_date)}</Text>
-            <Text style={styles.sessionMeta}>Created: {formatDate(session.created_at)}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessionTitle)]}>{formatDate(session.workout_date)}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessionMeta)]}>Workout review</Text>
             {/* Workout/session IDs hidden per request */}
             {/* {session.workout_id ? (
               <Text style={styles.sessionMeta}>Workout: {session.workout_id}</Text>
@@ -624,256 +643,19 @@ export default function SessionsDashboard({ route, navigation }) {
             )}
             <Text style={styles.sessionMeta}>Session: {session.session_id}</Text> */}
           </View>
-          <Text style={styles.expand}>{isOpen ? 'Hide' : 'View'}</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.expand)]}>{isOpen ? 'Hide' : 'View'}</Text>
         </Pressable>
         {isOpen && (
-          <View style={styles.sessionBody}>
+          <View style={brandTheme.style(styles.sessionBody)}>
             {loadingDetails ? (
               <ActivityIndicator />
             ) : details.length === 0 ? (
-              <Text style={styles.muted}>No session items recorded.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No session items recorded.</Text>
             ) : (
-                            details.map((item) => {
-                const key = `${session.session_id}::${item.session_item_index}`;
-                const reps = repsByItem[key] || [];
-                const repsLoading = repsLoadingByItem[key];
-                const isOpen = openItems[key];
-                const setSummaryList = Object.values(
-                  reps.reduce((acc, rep) => {
-                    const setIdx = Number(rep?.session_item_set_index) || 0;
-                    if (!acc[setIdx]) {
-                      acc[setIdx] = {
-                        setIdx,
-                        count: 0,
-                        score: 0,
-                        rom: 0,
-                        tut: 0,
-                        vel: 0,
-                        mom: 0,
-                      };
-                    }
-                    acc[setIdx].count += 1;
-                    acc[setIdx].score += Number(rep?.score) || 0;
-                    acc[setIdx].rom += Number(rep?.rom) || 0;
-                    acc[setIdx].tut += Number(rep?.tut) || 0;
-                    acc[setIdx].vel += Number(rep?.velocity) || 0;
-                    acc[setIdx].mom += Number(rep?.momentum) || 0;
-                    return acc;
-                  }, {})
-                )
-                  .filter((s) => s.count > 0)
-                  .sort((a, b) => a.setIdx - b.setIdx)
-                  .map((s) => ({
-                    setIdx: s.setIdx,
-                    count: s.count,
-                    avgScore: (s.score / s.count).toFixed(1),
-                    avgRom: (s.rom / s.count).toFixed(1),
-                    avgTut: (s.tut / s.count).toFixed(2),
-                    avgVel: (s.vel / s.count).toFixed(2),
-                    totalMom: s.mom.toFixed(1),
-                  }));
-                if (item.exercise_id) {
-                  fetchExerciseIfMissing(item.exercise_id);
-                }
-                const itemTotalMomentum = setSummaryList.reduce(
-                  (sum, s) => sum + (Number(s.totalMom) || 0),
-                  0
-                );
-                const muscleGroupLine = (() => {
-                  const ex = exerciseMap[item.exercise_id];
-                  const mg = Array.isArray(ex?.muscle_group) ? ex.muscle_group : [];
-                  if (!mg.length) return 'Muscle Group (from library): N/A';
-                  const parsed = mg
-                    .map((entry) => {
-                      if (typeof entry !== 'string') return null;
-                      const parts = entry.split(':').map((p) => p.trim());
-                      if (parts.length < 2) return { name: entry.trim(), weight: null };
-                      const weight = parseFloat(parts[1]);
-                      return { name: parts[0], weight: Number.isFinite(weight) ? weight : null };
-                    })
-                    .filter(Boolean);
-                  const totalWeight = parsed.reduce(
-                    (sum, p) => (p.weight !== null ? sum + p.weight : sum),
-                    0
-                  );
-                  if (!totalWeight) {
-                    return `Muscle Group (from library): ${parsed.map((p) => p.name).join(', ')}`;
-                  }
-                  const partsStr = parsed
-                    .map((p) => {
-                      if (p.weight === null) return p.name;
-                      const pct = ((p.weight / totalWeight) * 100).toFixed(0);
-                      const mom = (itemTotalMomentum * (p.weight / totalWeight)).toFixed(1);
-                      return `${p.name} ${pct}% (Mom ${mom})`;
-                    })
-                    .join(' | ');
-                  return `Muscle Group (from library): ${partsStr}`;
-                })();
-                const pieSegments = (() => {
-                  const ex = exerciseMap[item.exercise_id];
-                  const mg = Array.isArray(ex?.muscle_group) ? ex.muscle_group : [];
-                  if (!mg.length) return [];
-                  const parsed = mg
-                    .map((entry) => {
-                      if (typeof entry !== 'string') return null;
-                      const parts = entry.split(':').map((p) => p.trim());
-                      if (parts.length < 2) return { name: entry.trim(), weight: null };
-                      const weight = parseFloat(parts[1]);
-                      return { name: parts[0], weight: Number.isFinite(weight) ? weight : null };
-                    })
-                    .filter(Boolean);
-                  const totalWeight = parsed.reduce(
-                    (sum, p) => (p.weight !== null ? sum + p.weight : sum),
-                    0
-                  );
-                  if (!totalWeight) return [];
-                  return parsed.map((p) => {
-                    if (p.weight === null) return null;
-                    const percent = clampPct((p.weight / totalWeight) * 100);
-                    const mom = (itemTotalMomentum * (p.weight / totalWeight)).toFixed(1);
-                    return { name: p.name, percent, momentum: mom };
-                  }).filter(Boolean);
-                })();
-                const emoji = muscleEmoji[item.muscle_focus] || muscleEmoji[item.category] || 'Muscle';
-                return (
-                  <Pressable
-                    key={`${session.session_id}-${item.session_item_index}`}
-                    style={styles.itemBlock}
-                    onPress={() => toggleItem(session.session_id, item.session_item_index)}
-                  >
-                    <Text style={styles.itemTitle}>
-                      Exercise {item.session_item_index}: {item.exercise_id || 'Unknown Exercise'}
-                    </Text>
-                    <Text style={styles.itemMeta}>
-                      Exercise: {item.exercise_id || 'N/A'} | Muscle: {item.muscle_focus || 'N/A'}
-                    </Text>
-                    <Text style={styles.itemMeta}>
-                      {emoji} {muscleGroupLine}
-                    </Text>
-                    {pieSegments.length ? (
-                      <View style={styles.pieRow}>
-                        <MusclePieChart segments={pieSegments} size={140} />
-                        <View style={{ flex: 1, gap: 4 }}>
-                          {pieSegments.map((seg, idx) => (
-                            <Text key={idx} style={styles.subText}>
-                              {seg.name}: {seg.percent.toFixed(0)}% (Mom {seg.momentum})
-                            </Text>
-                          ))}
-                        </View>
-                      </View>
-                    ) : null}
-                    <Text style={styles.itemMeta}>{muscleGroupLine}</Text>
-                    {/* Workout ID hidden per request */}
-                    {/* <Text style={styles.itemMeta}>
-                      Workout: {item.workout_id || 'N/A'} (Workout index: {item.workout_index ?? 'N/A'})
-                    </Text> */}
-                    {/* <Text style={styles.itemMeta}>
-                      Created: {item.created_at || 'N/A'} | Updated: {item.updated_at || 'N/A'}
-                    </Text> */}
-                    {setSummaryList.length ? (
-                      <View style={styles.subSection}>
-                        <Text style={styles.subHeading}>Set Averages</Text>
-                        {setSummaryList.map((s) => {
-                          const lowScore = Number(s.avgScore) < 70;
-                          return (
-                            <View
-                              key={`summary-${s.setIdx}`}
-                              style={[
-                                styles.summaryRow,
-                                styles.summaryRowGrid,
-                              ]}
-                            >
-                              <Text style={styles.subText}>Set {s.setIdx}</Text>
-                              <Text
-                                style={[
-                                  styles.subText,
-                                  lowScore && styles.summaryTextLow,
-                                  !lowScore && Number(s.avgScore) >= 50 && Number(s.avgScore) < 80 && styles.summaryTextWarn,
-                                  Number(s.avgScore) > 80 && styles.summaryTextHigh,
-                                ]}
-                              >
-                                Score {s.avgScore}
-                              </Text>
-                              <Text style={styles.subText}>Total Reps {s.count}</Text>
-                              <Text style={styles.subText}>ROM {s.avgRom}</Text>
-                              <Text style={styles.subText}>TUT {s.avgTut}</Text>
-                              <Text style={styles.subText}>Vel {s.avgVel}</Text>
-                              <Text style={styles.subText}>Total Momentum {s.totalMom}</Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    ) : null}
-                    {item.sets.length ? (
-                      <View style={styles.subSection}>
-                        <Text style={styles.subHeading}>Sets</Text>
-                        {item.sets.map((set) => (
-                          <Text key={set.session_item_set_index} style={styles.subText}>
-                            Set {set.session_item_set_index} (Item {item.session_item_index}): {set.weight_lifted ?? '--'} lbs
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    {isOpen ? (
-                      repsLoading ? (
-                        <Text style={styles.subText}>Loading reps...</Text>
-                      ) : reps.length ? (
-                        <View style={styles.subSection}>
-                          {setSummaryList.length ? (
-                            <View style={{ marginBottom: 8 }}>
-                              <Text style={styles.subHeading}>Set Averages</Text>
-                              {setSummaryList.map((s) => (
-                                <Text key={`summary-${s.setIdx}`} style={styles.subText}>
-                                  Set {s.setIdx}: Score {s.avgScore} | ROM {s.avgRom} | TUT {s.avgTut} | Vel {s.avgVel} | Total Mom {s.totalMom}
-                                </Text>
-                              ))}
-                            </View>
-                          ) : null}
-                          <Text style={styles.subHeading}>Reps</Text>
-                          {[...reps]
-                            .sort((a, b) => (Number(a?.session_item_rep_index) || 0) - (Number(b?.session_item_rep_index) || 0))
-                            .map((rep) => {
-                              const repLow = Number(rep?.score) < 70;
-                              return (
-                                <View
-                                  key={`${rep.session_item_set_index}-${rep.session_item_rep_index}`}
-                                  style={{ paddingVertical: 6 }}
-                                >
-                                  <Text style={styles.subText}>Set: {rep.session_item_set_index ?? 'N/A'}</Text>
-                                  <Text style={styles.subText}>Rep: {rep.session_item_rep_index ?? 'N/A'}</Text>
-                                  {/* <Text style={[styles.subText, repLow && styles.summaryTextLow]}>
-                                    
-                                  </Text> */}
-                                  <View style={styles.barList}>
-                                    {buildRepBars(rep).map((bar) => (
-                                      <View key={bar.label} style={styles.barRow}>
-                                        <Text style={styles.barLabel}>{bar.label}</Text>
-                                        <View style={styles.barTrack}>
-                                          <View
-                                            style={[
-                                              styles.barFill,
-                                              { width: `${bar.percent.toFixed(0)}%`, backgroundColor: getBarColor(bar.percent) },
-                                            ]}
-                                          />
-                                        </View>
-                                        <Text style={styles.barValue}>{bar.display}</Text>
-                                      </View>
-                                    ))}
-                                  </View>
-                                  <Text style={styles.subDivider}>--------------------------</Text>
-                                </View>
-                              );
-                            })}
-                        </View>
-                      ) : (
-                        <Text style={styles.subText}>No reps found for this item.</Text>
-                      )
-                    ) : (
-                      <Text style={styles.subText}>Tap to view reps</Text>
-                    )}
-                  </Pressable>
-                );
-              })
+              details.map(item => <ExerciseHistory
+                key={`${session.session_id}-${item.session_item_index}`}
+                name={exerciseMap[item.exercise_id]?.name || item.exercise_id || 'Exercise'}
+                reps={item.reps || []} sets={item.sets || []} />)
             )}
           </View>
         )}
@@ -882,77 +664,24 @@ export default function SessionsDashboard({ route, navigation }) {
   };
 
   return (
-    <View style={styles.safe}>
+    <View style={brandTheme.style(styles.safe)}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Session History</Text>
-        <View style={styles.mapCard}>
-          <View style={styles.rowMomentumHeading}>
-            <Text style={styles.mapTitle}>Load Distribution</Text>
-            <Text style={styles.mapDate}>{monthDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</Text>
-          </View>
-          <View style={styles.bodyHighlighterContainer}>
-            <Body
-              data={bodyData}
-              gender="male"
-              side="front"
-              scale={0.7}
-              border="#dfdfdf"
-              colors={['red', 'orange', 'yellow']}
-            />
-            <Body
-              data={bodyData}
-              gender="male"
-              side="back"
-              scale={0.7}
-              border="#dfdfdf"
-              colors={['red', 'green', 'yellow']}
-            />
-          </View>
-          {bodyData.length ? (
-            <View style={styles.muscleList}>
-              {bodyData.map((muscle, index) => (
-                <View key={index} style={[styles.muscleChip, { backgroundColor: '#f1f5f9' }]}>
-                  <Text style={styles.muscleName}>{muscle.name}</Text>
-                  <Text style={styles.musclePct}>{muscle.percentage}%</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.muted}>No muscle data for this period yet.</Text>
-          )}
-          {muscleMomentumList.length ? (
-            <View style={styles.momentumList}>
-              {muscleMomentumList.map((m, idx) => (
-                <Text key={idx} style={styles.musclePct}>
-                  {m.name}: {m.percent}% ({m.total.toFixed(1)})
-                </Text>
-              ))}
-            </View>
-          ) : null}
-          {totalMomentumData ? (
-            <View style={styles.momentumRow}>
-              <View style={styles.momentumItem}>
-                <Text style={styles.momentumValue}>{totalMomentumData}</Text>
-                <Text style={styles.momentumLabel}>Momentum</Text>
-              </View>
-            </View>
-          ) : null}
-        </View>
-        <View style={styles.calendarCard}>
-          <View style={styles.calendarHeader}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Session History</Text>
+        <View style={brandTheme.style(styles.calendarCard)}>
+          <View style={brandTheme.style(styles.calendarHeader)}>
             <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
-              <Text style={styles.calendarNav}>{'<'}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.calendarNav)]}>{'<'}</Text>
             </TouchableOpacity>
-            <Text style={styles.calendarTitle}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.calendarTitle)]}>
               {monthDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </Text>
             <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
-              <Text style={styles.calendarNav}>{'>'}</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.calendarNav)]}>{'>'}</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.calendarGrid}>
+          <View style={brandTheme.style(styles.calendarGrid)}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <Text key={d} style={styles.calendarDow}>{d}</Text>
+              <Text key={d} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.calendarDow)]}>{d}</Text>
             ))}
             {(() => {
               const year = monthDate.getFullYear();
@@ -961,7 +690,7 @@ export default function SessionsDashboard({ route, navigation }) {
               const daysInMonth = new Date(year, month + 1, 0).getDate();
               const cells = [];
               for (let i = 0; i < firstDay; i += 1) {
-                cells.push(<View key={`pad-${i}`} style={styles.calendarCell} />);
+                cells.push(<View key={`pad-${i}`} style={brandTheme.style(styles.calendarCell)} />);
               }
               const sessionDates = new Set(
                 sessions
@@ -976,17 +705,15 @@ export default function SessionsDashboard({ route, navigation }) {
                 cells.push(
                   <TouchableOpacity
                     key={dateStr}
-                    style={[
+                    style={brandTheme.style([
                       styles.calendarCell,
                       isSelected && styles.calendarCellSelected,
-                    ]}
+                    ])}
+                    accessibilityLabel={`Review ${dateStr}`}
                     onPress={() => setSelectedDate(dateStr)}
                   >
-                    <Text style={[styles.calendarCellText, isSelected && styles.calendarCellTextSelected]}>{day}</Text>
-                    {dayMomentum !== undefined ? (
-                      <Text style={styles.calendarMomentum}>{Math.round(dayMomentum)}</Text>
-                    ) : null}
-                    {hasSession ? <View style={styles.calendarDot} /> : null}
+                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.calendarCellText, isSelected && styles.calendarCellTextSelected])]}>{day}</Text>
+                    {hasSession ? <View style={brandTheme.style(styles.calendarDot)} /> : null}
                   </TouchableOpacity>
                 );
               }
@@ -994,9 +721,14 @@ export default function SessionsDashboard({ route, navigation }) {
             })()}
           </View>
         </View>
+        <View style={brandTheme.style(styles.mapCard)}>
+          <Text style={[styles.mapTitle,{color:brandTheme.colors.text}]}>Muscle breakdown</Text>
+          <Text style={[styles.mapDate,{color:brandTheme.colors.muted,marginBottom:16}]}>{selectedDate || 'This month'}</Text>
+          <MuscleBreakdown segments={muscleMomentumList} />
+        </View>
         {loading ? <ActivityIndicator size="large" /> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        {!loading && !sessions.length ? <Text style={styles.muted}>No sessions recorded yet.</Text> : null}
+        {error ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.error)]}>{error}</Text> : null}
+        {!loading && !sessions.length ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No sessions recorded yet.</Text> : null}
         {(selectedDate
           ? sessions.filter((s) => normalizeDate(s.workout_date || s.created_at) === selectedDate)
           : sessions
@@ -1016,7 +748,7 @@ const formatDate = (value) => {
   }
 };
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#fff',
@@ -1172,17 +904,17 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    rowGap: 4,
   },
   calendarDow: {
-    width: '13%',
+    width: '14.285714%',
     textAlign: 'center',
     fontSize: 12,
     color: '#475569',
     marginBottom: 4,
   },
   calendarCell: {
-    width: '13%',
+    width: '14.285714%',
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',

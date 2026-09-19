@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, RefreshControl, SafeAreaView } from 'react-native';
 import { generateClient } from 'aws-amplify/api';
@@ -130,6 +131,9 @@ const unwrapList = (val) => {
 };
 
 export default function TrainerProfile({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const { trainer_id, user_id } = route.params || {};
   const [trainer, setTrainer] = useState(null);
@@ -541,18 +545,18 @@ export default function TrainerProfile({ route, navigation }) {
     const price = unwrapString(item.price);
     const isPurchased = purchasedProductIds.has(itemId);
     return (
-      <View style={styles.productCard}>
-        <Text style={styles.productName}>{name}</Text>
-        <Text style={styles.meta}>Intensity: {difficulty || 'N/A'}</Text>
-        <Text style={styles.meta}>Goal: {goal || 'N/A'}</Text>
-        <Text style={styles.meta}>Exercises: {item.exerciseCount ?? 0}</Text>
-        <Text style={styles.meta}>Price: ${price ?? 0}</Text>
+      <View style={brandTheme.style(styles.productCard)}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.productName)]}>{name}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Intensity: {difficulty || 'N/A'}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Goal: {goal || 'N/A'}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Exercises: {item.exerciseCount ?? 0}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Price: ${price ?? 0}</Text>
         <TouchableOpacity
-          style={[styles.buyButton, isPurchased && styles.purchasedButton]}
+          style={brandTheme.style([styles.buyButton, isPurchased && styles.purchasedButton])}
           onPress={() => !isPurchased && handlePurchase(item, 'workout')}
           disabled={purchasing !== null || isPurchased}
         >
-          <Text style={styles.buyButtonText}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.buyButtonText)]}>
             {purchasing === itemId ? 'Processing...' : (isPurchased ? 'Purchased' : 'Purchase')}
           </Text>
         </TouchableOpacity>
@@ -571,19 +575,19 @@ export default function TrainerProfile({ route, navigation }) {
     const workoutProducts = unwrapList(item.workout_products);
 
     return (
-      <View style={styles.productCard}>
-        <Text style={styles.productName}>{name}</Text>
-        <Text style={styles.meta}>Duration: {duration ?? 'N/A'} weeks</Text>
-        <Text style={styles.meta}>Exercises: {item.exerciseCount ?? 0}</Text>
-        <Text style={styles.meta}>Price: ${price ?? 0}</Text>
-        <Text style={styles.meta}>Workouts: {workoutIds.length}</Text>
-        <Text style={styles.meta}>Workout products: {workoutProducts.length}</Text>
+      <View style={brandTheme.style(styles.productCard)}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.productName)]}>{name}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Duration: {duration ?? 'N/A'} weeks</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Exercises: {item.exerciseCount ?? 0}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Price: ${price ?? 0}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Workouts: {workoutIds.length}</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>Workout products: {workoutProducts.length}</Text>
         <TouchableOpacity
-          style={[styles.buyButton, isPurchased && styles.purchasedButton]}
+          style={brandTheme.style([styles.buyButton, isPurchased && styles.purchasedButton])}
           onPress={() => !isPurchased && handlePurchase(item, 'service')}
           disabled={purchasing !== null || isPurchased}
         >
-          <Text style={styles.buyButtonText}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.buyButtonText)]}>
             {purchasing === itemId ? 'Processing...' : (isPurchased ? 'Purchased' : 'Purchase')}
           </Text>
         </TouchableOpacity>
@@ -595,23 +599,23 @@ export default function TrainerProfile({ route, navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={brandTheme.style(styles.center)}>
         <ActivityIndicator />
-        <Text>Loading trainer...</Text>
+        <Text style={{color:brandTheme.colors.text}}>Loading trainer...</Text>
       </View>
     );
   }
 
   if (!trainer) {
     return (
-      <View style={styles.center}>
-        <Text>Trainer not found.</Text>
+      <View style={brandTheme.style(styles.center)}>
+        <Text style={{color:brandTheme.colors.text}}>Trainer not found.</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.APP_WHITE || '#fff' }}>
+    <SafeAreaView style={brandTheme.style({ flex: 1, backgroundColor: Colors.APP_WHITE || '#fff' })}>
       <FlatList
         data={products}
         keyExtractor={(item) => item.workout_product_id}
@@ -620,51 +624,51 @@ export default function TrainerProfile({ route, navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListHeaderComponent={
-          <View style={styles.header}>
-            <View style={styles.headerTopRow}>
+          <View style={brandTheme.style(styles.header)}>
+            <View style={brandTheme.style(styles.headerTopRow)}>
               <TouchableOpacity
-                style={styles.profileContainer}
+                style={brandTheme.style(styles.profileContainer)}
                 onPress={pickImage}
                 disabled={!isOwnProfile || uploading}
               >
                 <Image
                   source={{ uri: profileImage }}
-                  style={styles.dashboardProfileImage}
+                  style={brandTheme.style(styles.dashboardProfileImage)}
                 />
                 {uploading && (
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', borderRadius: 40, margin: 2 }]}>
-                    <ActivityIndicator size="small" color="#fff" />
+                  <View style={brandTheme.style([StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', borderRadius: 40, margin: 2 }])}>
+                    <ActivityIndicator size="small" color={brandTheme.color("#fff")} />
                   </View>
                 )}
                 {isOwnProfile && !uploading && (
-                  <View style={styles.plusIconOverlay}>
-                    <Ionicons name="add" size={16} color="#fff" />
+                  <View style={brandTheme.style(styles.plusIconOverlay)}>
+                    <Ionicons name="add" size={16} color={brandTheme.color("#fff")} />
                   </View>
                 )}
               </TouchableOpacity>
 
-              <View style={styles.headerInfo}>
-                <Text style={styles.title}>{user?.first_name || ''} {user?.last_name || ''}</Text>
+              <View style={brandTheme.style(styles.headerInfo)}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>{user?.first_name || ''} {user?.last_name || ''}</Text>
                 {/* <Text style={styles.meta}>
                   {user?.first_name || ''} {user?.last_name || ''}
                 </Text> */}
-                <Text style={styles.meta}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>
                   {user?.city || ''}{user?.city && user?.state ? ', ' : ''}{user?.state || ''}
                 </Text>
               </View>
 
               <TouchableOpacity
-                style={styles.messageIconButton}
+                style={brandTheme.style(styles.messageIconButton)}
                 onPress={() => setIsMessageSheetVisible(true)}
               >
-                <Ionicons name="mail" size={24} color={Colors.APP_WHITE || '#fff'} />
+                <Ionicons name="mail" size={24} color={brandTheme.color(Colors.APP_WHITE || '#fff')} />
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.meta2, { marginTop: 5 }]}>Bio: {user?.bio || 'N/A'}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.meta2, { marginTop: 5 }])]}>Bio: {user?.bio || 'N/A'}</Text>
             {/* <Text style={styles.meta}>Focus: {trainer.training_focus || 'N/A'}</Text> */}
-            <Text style={[styles.title, { marginTop: 16 }]}>Virtual Training Services</Text>
-            <Text style={{ fontSize: 10, color: '#999',marginBottom:10 }}>Trainer ID: {trainer_id}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.title, { marginTop: 16 }])]}>Virtual Training Services</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ fontSize: 10, color: '#999',marginBottom:10 })]}>Trainer ID: {trainer_id}</Text>
             {services.length ? (
               services.map((svc) => (
                 <View key={unwrapString(svc.service_id)}>
@@ -672,15 +676,15 @@ export default function TrainerProfile({ route, navigation }) {
                 </View>
               ))
             ) : (
-              <Text style={styles.meta}>No virtual training services yet.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>No virtual training services yet.</Text>
             )}
-            <Text style={[styles.title, { marginTop: 16 }]}>Workout Products</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.title, { marginTop: 16 }])]}>Workout Products</Text>
           </View>
         }
         contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
         ListEmptyComponent={
-          <View style={{ padding: 24, alignItems: 'center' }}>
-            <Text style={styles.meta}>No workout products yet.</Text>
+          <View style={brandTheme.style({ padding: 24, alignItems: 'center' })}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>No workout products yet.</Text>
           </View>
         }
         showsVerticalScrollIndicator={false}
@@ -695,7 +699,7 @@ export default function TrainerProfile({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',

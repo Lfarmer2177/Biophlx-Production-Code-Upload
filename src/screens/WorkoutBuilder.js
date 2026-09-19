@@ -1,3 +1,5 @@
+import BrandButton from '../Components/Button/BrandButton';
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, FlatList, Button, TouchableOpacity } from 'react-native';
 import { generateClient } from 'aws-amplify/api';
@@ -19,6 +21,8 @@ const LIST_TRAINERS_BY_USER = /* GraphQL */ `
 let client;
 
 export default function WorkoutBuilder({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+
   client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const { customer_id, trainer_id: trainerIdFromRoute } = route.params;
   const [exercises, setExercises] = useState([]);
@@ -74,22 +78,22 @@ export default function WorkoutBuilder({ route, navigation }) {
   };
 
   return (
-    <View style={{ flex:1, padding:16 }}>
-      <Text style={{ fontSize:18, fontWeight:'600', marginBottom:8 }}>Pick exercises</Text>
+    <View style={brandTheme.style({ flex:1, padding:16 })}>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ fontSize:18, fontWeight:'600', marginBottom:8 })]}>Pick exercises</Text>
       <FlatList
         data={exercises}
         keyExtractor={i=>i.exercise_id}
         renderItem={({item}) => (
           <TouchableOpacity
-            style={{ padding:12, borderWidth:1, borderColor: picked.some(p=>p.exercise_id===item.exercise_id)?'#4caf50':'#ddd', borderRadius:8, marginBottom:8 }}
+            style={brandTheme.style({ padding:12, borderWidth:1, borderColor: picked.some(p=>p.exercise_id===item.exercise_id)?'#4caf50':'#ddd', borderRadius:8, marginBottom:8 })}
             onPress={()=>toggle(item)}
           >
-            <Text style={{ fontWeight:'600' }}>{item.name}</Text>
-            <Text style={{ color:'#666' }}>{item.category}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ fontWeight:'600' })]}>{item.name}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ color:'#666' })]}>{item.category}</Text>
           </TouchableOpacity>
         )}
       />
-      <Button title={`Create Workout (${picked.length})`} onPress={build} disabled={!picked.length}/>
+      <BrandButton color={brandTheme.colors.primary} title={`Create Workout (${picked.length})`} onPress={build} disabled={!picked.length}/>
     </View>
   );
 }

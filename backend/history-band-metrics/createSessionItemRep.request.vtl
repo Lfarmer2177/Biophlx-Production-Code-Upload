@@ -1,0 +1,46 @@
+## Below example shows how to look up an item with a Primary Key of "id" from GraphQL arguments
+## The helper $util.dynamodb.toDynamoDBJson automatically converts to a DynamoDB formatted request
+## There is a "context" object with arguments, identity, headers, and parent field information you can access.
+## It also has a shorthand notation avaialable:
+##  - $context or $ctx is the root object
+##  - $ctx.arguments or $ctx.args contains arguments
+##  - $ctx.identity has caller information, such as $ctx.identity.username
+##  - $ctx.request.headers contains headers, such as $context.request.headers.xyz
+##  - $ctx.source is a map of the parent field, for instance $ctx.source.xyz
+### Read more: https://docs.aws.amazon.com/appsync/latest/devguide/resolver-mapping-template-reference.html
+
+#set($now = $util.time.nowISO8601())
+#set($sid = $ctx.args.input.session_id)
+#set($idx = $ctx.args.input.session_item_index)
+#set($setIdx = $ctx.args.input.session_item_set_index)
+#set($repIdx = $ctx.args.input.session_item_rep_index)
+#set($repKey = "${idx}#${setIdx}#${repIdx}")
+#set($itemKey = "sess:${sid}#i:${idx}")
+{
+"version": "2018-05-29",
+"operation": "PutItem",
+"key": {
+"session_id": $util.dynamodb.toDynamoDBJson($sid),
+"rep_key": $util.dynamodb.toDynamoDBJson($repKey)
+},
+"attributeValues": {
+"session_item_index": $util.dynamodb.toDynamoDBJson($idx),
+"session_item_set_index": $util.dynamodb.toDynamoDBJson($setIdx),
+"session_item_rep_index": $util.dynamodb.toDynamoDBJson($repIdx),
+"session_item_key": $util.dynamodb.toDynamoDBJson($itemKey),
+
+"tut": $util.dynamodb.toDynamoDBJson($ctx.args.input.tut),
+"velocity": $util.dynamodb.toDynamoDBJson($ctx.args.input.velocity),
+"momentum": $util.dynamodb.toDynamoDBJson($ctx.args.input.momentum),
+"band_metrics": $util.dynamodb.toDynamoDBJson($ctx.args.input.band_metrics),
+    "score": $util.dynamodb.toDynamoDBJson($ctx.args.input.score),
+"rom": $util.dynamodb.toDynamoDBJson($ctx.args.input.rom),
+
+"created_at": $util.dynamodb.toDynamoDBJson($now),
+"updated_at": $util.dynamodb.toDynamoDBJson($now)
+},
+"condition": {
+"expression": "attribute_not_exists(#sk)",
+"expressionNames": { "#sk": "rep_key" }
+}
+}

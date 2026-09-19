@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -44,6 +45,9 @@ const INTENSITY_PRESETS = {
 };
 
 export default function CreateWorkout({ route, navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const { customer_id, trainer_id: trainerIdFromRoute } = route.params ?? {};
 
@@ -106,13 +110,13 @@ export default function CreateWorkout({ route, navigation }) {
   };
 
   const saveWorkout = async () => {
-    // If we're a trainer creating a generic workout (no customer_id), 
+    // If we're a trainer creating a generic workout (no customer_id),
     // we use a placeholder customer_id or allow it to be null if schema permits.
-    // Based on the log "Fetch sessions failed", it seems this screen might be 
+    // Based on the log "Fetch sessions failed", it seems this screen might be
     // used in contexts where customer_id is expected but not provided.
-    
+
     let effectiveCustomerId = customer_id;
-    
+
     if (!effectiveCustomerId) {
       console.log('CreateWorkout: No customer_id provided. Checking if we can use trainer as customer.');
       try {
@@ -154,15 +158,15 @@ export default function CreateWorkout({ route, navigation }) {
 
       await client.graphql({
         query: createWorkout,
-        variables: { 
-          input: { 
-            workout_id, 
-            customer_id: effectiveCustomerId, 
-            trainer_id: trainer_id || null, 
-            name, 
-            created_at: now, 
-            updated_at: now 
-          } 
+        variables: {
+          input: {
+            workout_id,
+            customer_id: effectiveCustomerId,
+            trainer_id: trainer_id || null,
+            name,
+            created_at: now,
+            updated_at: now
+          }
         },
       });
 
@@ -235,58 +239,58 @@ export default function CreateWorkout({ route, navigation }) {
   const renderSelectedItem = ({ item, index }) => {
     const preset = INTENSITY_PRESETS[item.intensity] || INTENSITY_PRESETS.moderate;
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
+      <View style={brandTheme.style(styles.card)}>
+        <View style={brandTheme.style(styles.cardHeader)}>
           <View>
-            <Text style={styles.cardTitle}>{index + 1}. {item.name}</Text>
-            <Text style={styles.cardSubtitle}>{item.category}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.cardTitle)]}>{index + 1}. {item.name}</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.cardSubtitle)]}>{item.category}</Text>
           </View>
           <Pressable onPress={() => removeItem(item.tempId)}>
-            <Text style={styles.remove}>Remove</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.remove)]}>Remove</Text>
           </Pressable>
         </View>
 
-        <View style={styles.row}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Target Sets</Text>
-            <TextInput
+        <View style={brandTheme.style(styles.row)}>
+          <View style={brandTheme.style(styles.inputGroup)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Target Sets</Text>
+            <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
               keyboardType="numeric"
               value={item.target_sets}
               onChangeText={(text) => updateItem(item.tempId, 'target_sets', text)}
-              style={styles.input}
+              style={brandTheme.style(styles.input)}
             />
           </View>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Target Reps</Text>
-            <TextInput
+          <View style={brandTheme.style(styles.inputGroup)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Target Reps</Text>
+            <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
               keyboardType="numeric"
               value={item.target_reps}
               onChangeText={(text) => updateItem(item.tempId, 'target_reps', text)}
-              style={styles.input}
+              style={brandTheme.style(styles.input)}
             />
           </View>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Target Weight</Text>
-            <TextInput
+          <View style={brandTheme.style(styles.inputGroup)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Target Weight</Text>
+            <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
               keyboardType="numeric"
               value={item.target_weight}
               onChangeText={(text) => updateItem(item.tempId, 'target_weight', text)}
-              style={styles.input}
+              style={brandTheme.style(styles.input)}
               placeholder="lbs"
             />
           </View>
         </View>
 
-        <View style={styles.intensityRow}>
+        <View style={brandTheme.style(styles.intensityRow)}>
           {Object.entries(INTENSITY_PRESETS).map(([key, presetInfo]) => {
             const active = item.intensity === key;
             return (
               <TouchableOpacity
                 key={key}
                 onPress={() => updateItem(item.tempId, 'intensity', key)}
-                style={[styles.intensityPill, active && styles.intensityPillActive]}
+                style={brandTheme.style([styles.intensityPill, active && styles.intensityPillActive])}
               >
-                <Text style={[styles.intensityText, active && styles.intensityTextActive]}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.intensityText, active && styles.intensityTextActive])]}>
                   {presetInfo.label}
                 </Text>
               </TouchableOpacity>
@@ -294,7 +298,7 @@ export default function CreateWorkout({ route, navigation }) {
           })}
         </View>
 
-        <Text style={styles.meta}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.meta)]}>
           Target TUT: {preset.tut.toFixed(2)} sec · Target Velocity: {preset.velocity.toFixed(2)} m/s
         </Text>
       </View>
@@ -302,22 +306,22 @@ export default function CreateWorkout({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={brandTheme.style(styles.safe)}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.heading}>Create Workout</Text>
-        <TextInput
-          style={styles.nameInput}
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.heading)]}>Create Workout</Text>
+        <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+          style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.nameInput)]}
           placeholder="Workout name"
           value={workoutName}
           onChangeText={setWorkoutName}
         />
 
-        <TouchableOpacity style={styles.addButton} onPress={() => setPickerVisible(true)}>
-          <Text style={styles.addButtonText}>+ Add Exercise</Text>
+        <TouchableOpacity style={brandTheme.style(styles.addButton)} onPress={() => setPickerVisible(true)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.addButtonText)]}>+ Add Exercise</Text>
         </TouchableOpacity>
 
         {items.length === 0 ? (
-          <Text style={styles.empty}>Add exercises to begin building your workout.</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.empty)]}>Add exercises to begin building your workout.</Text>
         ) : (
           <FlatList
             data={items}
@@ -327,27 +331,27 @@ export default function CreateWorkout({ route, navigation }) {
           />
         )}
 
-        <TouchableOpacity style={[styles.saveButton, (!items.length || saving) && styles.saveButtonDisabled]} onPress={saveWorkout} disabled={!items.length || saving}>
-          <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Workout'}</Text>
+        <TouchableOpacity style={brandTheme.style([styles.saveButton, (!items.length || saving) && styles.saveButtonDisabled])} onPress={saveWorkout} disabled={!items.length || saving}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.saveButtonText)]}>{saving ? 'Saving...' : 'Save Workout'}</Text>
         </TouchableOpacity>
       </ScrollView>
 
       <Modal visible={pickerVisible} animationType="slide">
-        <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Exercise</Text>
+        <SafeAreaView style={brandTheme.style(styles.modalSafe)}>
+          <View style={brandTheme.style(styles.modalHeader)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.modalTitle)]}>Select Exercise</Text>
             <Pressable onPress={() => setPickerVisible(false)}>
-              <Text style={styles.close}>Close</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.close)]}>Close</Text>
             </Pressable>
           </View>
           <FlatList
             data={exercises}
             keyExtractor={(item) => item.exercise_id}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.exerciseRow} onPress={() => addExercise(item)}>
+              <TouchableOpacity style={brandTheme.style(styles.exerciseRow)} onPress={() => addExercise(item)}>
                 <View>
-                  <Text style={styles.exerciseName}>{item.name}</Text>
-                  <Text style={styles.exerciseCategory}>{item.category}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.exerciseName)]}>{item.name}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.exerciseCategory)]}>{item.category}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -378,7 +382,7 @@ const unwrap = (value) => {
   return value ?? '';
 };
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#f7f7fb',

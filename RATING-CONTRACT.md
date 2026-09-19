@@ -20,3 +20,8 @@ Validation on 2026-09-19:
 - Changed JSX parsed successfully. Native mobile and physical BLE testing were not performed.
 
 The earlier BLE angle decoding and device-sequence audit findings remain separate unresolved work.
+
+## Historical review (2026-09-19)
+New reps also store `band_metrics` as version 1 AWSJSON, containing both band labels and independent score, ROM, TUT, velocity and momentum. Automatic and manual saves share the serializer. The nullable schema extension is deployed; older records retain combined metrics and show individual band values as Not recorded.
+
+Historical cards display the unchanged stored score. Badge colors use the rounded displayed score: red 0–49, orange 50–69, yellow 70–84, green 85–100. Set score averages valid rep scores, excluding missing values and including zero. These colors are presentation thresholds, not a new scoring algorithm.

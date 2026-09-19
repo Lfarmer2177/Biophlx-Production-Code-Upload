@@ -1,9 +1,11 @@
+import { useBIOPHLXTheme } from './src/Theme/BIOPHLXTheme';
+import { StatusBar } from 'react-native';
 import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 import '@react-native-community/netinfo';
 
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { Amplify } from 'aws-amplify';
@@ -59,11 +61,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const { colors, dark } = useBIOPHLXTheme();
+  const navigationTheme = { ...(dark ? DarkTheme : DefaultTheme), colors: { ...(dark ? DarkTheme : DefaultTheme).colors, primary: colors.accent, background: colors.background, card: colors.surface, text: colors.text, border: colors.border, notification: colors.primary } };
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BleProvider>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerBackTitle: 'Back' }} initialRouteName="Auth">
+        <NavigationContainer theme={navigationTheme}>
+          <StatusBar barStyle={dark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+          <Stack.Navigator screenOptions={{ headerBackTitle: 'Back', headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface }, headerTitleStyle: { color: colors.text }, contentStyle: { backgroundColor: colors.background } }} initialRouteName="Auth">
             <Stack.Screen name="Auth" component={AuthGate} options={{ title: 'Sign In' }} />
             <Stack.Screen name="ProfileSetup" component={ProfileSetup} options={{ title: 'Complete Profile' }} />
             <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />

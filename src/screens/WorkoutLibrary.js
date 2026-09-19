@@ -1,3 +1,4 @@
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -99,6 +100,9 @@ const GET_SERVICE = /* GraphQL */ `
   }
 `;
 export default function WorkoutLibrary({ route,navigation }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const {clientData}=route?.params || {};
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [customerId, setCustomerId] = useState(null);
@@ -161,10 +165,10 @@ export default function WorkoutLibrary({ route,navigation }) {
           variables: { customer_id: custId, limit: 50 },
         });
         const directItems = directData?.listWorkoutsByCustomer ?? [];
-        
+
         // 2. Fetch permissions for purchased items
         let purchasedItems = [];
-        
+
         // 3. Get Trainer ID if not set
         if (!myTrainerId) {
           const tRes = await client.graphql({
@@ -180,10 +184,10 @@ export default function WorkoutLibrary({ route,navigation }) {
             query: listPermissionsByUser,
             variables: { user_id, limit: 100 }
           });
-          
+
           const perms = permData?.listPermissionsByUser?.items || [];
           console.log('WorkoutLibrary: Found permissions:', perms.length);
-          
+
           // Group by trainer_id for efficient fetching
           const permsByTrainer = {};
           for (const p of perms) {
@@ -199,7 +203,7 @@ export default function WorkoutLibrary({ route,navigation }) {
           for (const tId of Object.keys(permsByTrainer)) {
             try {
               console.log('WorkoutLibrary: Fetching resources for trainer:', tId);
-              
+
               const [prodRes, svcRes, wrkRes] = await Promise.all([
                 client.graphql({
                   query: LIST_PRODUCTS_BY_TRAINER,
@@ -250,9 +254,9 @@ export default function WorkoutLibrary({ route,navigation }) {
                     const packageName = unwrapString(product.name);
                     const workoutIdsRaw = product.workout_id || [];
                     const workoutIds = (Array.isArray(workoutIdsRaw) ? workoutIdsRaw : [workoutIdsRaw]).map(id => unwrapString(id)).filter(Boolean);
-                    
+
                     console.log(`WorkoutLibrary: Found product "${packageName}" with ${workoutIds.length} workouts`);
-                    
+
                     for (const wid of workoutIds) {
                       const workoutInfo = workoutNameMap[wid];
                       if (workoutInfo) {
@@ -300,9 +304,9 @@ export default function WorkoutLibrary({ route,navigation }) {
                   if (service) {
                     const packageName = unwrapString(service.service_name);
                     const workoutIds = (Array.isArray(service.workout_ids) ? service.workout_ids : []).map(id => unwrapString(id)).filter(Boolean);
-                    
+
                     console.log(`WorkoutLibrary: Found service "${packageName}" with ${workoutIds.length} workouts`);
-                    
+
                     for (const wid of workoutIds) {
                       const workoutInfo = workoutNameMap[wid];
                       if (workoutInfo) {
@@ -354,7 +358,7 @@ export default function WorkoutLibrary({ route,navigation }) {
 
         // Final assembly of the list with section headers
         let finalItems = [...normalizedDirect];
-        
+
         if (purchasedItems.length > 0) {
           // Add main "Purchased Workouts" separator
           finalItems.push({ type: 'header', label: 'Purchased Workouts', id: 'purchased-heading', uniqueId: 'purchased-heading' });
@@ -363,8 +367,8 @@ export default function WorkoutLibrary({ route,navigation }) {
           const grouped = purchasedItems.reduce((acc, item) => {
             const pkg = item.purchased_name || 'Other Purchases';
             if (!acc[pkg]) acc[pkg] = [];
-            acc[pkg].push({ 
-              ...item, 
+            acc[pkg].push({
+              ...item,
               type: 'workout',
               uniqueId: `${item.purchase_id}-${item.workout_id}`
             });
@@ -373,9 +377,9 @@ export default function WorkoutLibrary({ route,navigation }) {
 
           // Add each package with its sub-header
           for (const pkgName of Object.keys(grouped)) {
-            finalItems.push({ 
-              type: 'package_header', 
-              label: pkgName, 
+            finalItems.push({
+              type: 'package_header',
+              label: pkgName,
               id: `pkg-${pkgName}`,
               uniqueId: `pkg-${pkgName}`
             });
@@ -426,7 +430,7 @@ export default function WorkoutLibrary({ route,navigation }) {
       });
       const rawData = itemsRes.data;
       let originalItems = rawData?.listWorkoutItemsByWorkout ?? rawData?.listWorkoutItems ?? [];
-      
+
       // Handle both paginated (connection) and direct array responses
       if (originalItems?.items) {
         originalItems = originalItems.items;
@@ -503,7 +507,7 @@ export default function WorkoutLibrary({ route,navigation }) {
 
       try {
         setItemsLoading((prev) => ({ ...prev, [uniqueId]: true }));
-        
+
         let allItems = [];
         const { data } = await client.graphql({
           query: listWorkoutItemsByWorkout,
@@ -514,7 +518,7 @@ export default function WorkoutLibrary({ route,navigation }) {
         const normalized = allItems
           .map(normalizeWorkoutItem)
           .sort((a, b) => (a.workout_item_index || 0) - (b.workout_item_index || 0));
-        
+
         setItemsMap((prev) => ({ ...prev, [uniqueId]: normalized }));
         return normalized;
       } catch (err) {
@@ -555,16 +559,16 @@ export default function WorkoutLibrary({ route,navigation }) {
   const renderWorkout = ({ item }) => {
     if (item.type === 'header') {
       return (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderText}>{item.label}</Text>
+        <View style={brandTheme.style(styles.sectionHeader)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sectionHeaderText)]}>{item.label}</Text>
         </View>
       );
     }
-    
+
     if (item.type === 'package_header') {
       return (
-        <View style={styles.packageHeader}>
-          <Text style={styles.packageHeaderText}>{item.label}</Text>
+        <View style={brandTheme.style(styles.packageHeader)}>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.packageHeaderText)]}>{item.label}</Text>
         </View>
       );
     }
@@ -574,51 +578,51 @@ export default function WorkoutLibrary({ route,navigation }) {
     const loadingItems = itemsLoading[item.uniqueId];
 
     return (
-      <View style={styles.card}>
-        <Pressable onPress={() => toggleExpand(item)} style={styles.cardHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.workoutName}>{item.name}</Text>
+      <View style={brandTheme.style(styles.card)}>
+        <Pressable onPress={() => toggleExpand(item)} style={brandTheme.style(styles.cardHeader)}>
+          <View style={brandTheme.style({ flex: 1 })}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.workoutName)]}>{item.name}</Text>
             {item.is_purchased && (
-              <View style={styles.badgeRow}>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>PURCHASED</Text>
+              <View style={brandTheme.style(styles.badgeRow)}>
+                <View style={brandTheme.style(styles.badge)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.badgeText)]}>PURCHASED</Text>
                 </View>
               </View>
             )}
-            <Text style={styles.workoutMeta}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.workoutMeta)]}>
               Created {formatDate(item.created_at)}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={brandTheme.style({ flexDirection: 'row', alignItems: 'center' })}>
             {clientData && (
-              <TouchableOpacity 
-                style={[styles.performButton, { backgroundColor: Colors.APP_BLUE, marginRight: 8 }]} 
+              <TouchableOpacity
+                style={brandTheme.style([styles.performButton, { backgroundColor: Colors.APP_BLUE, marginRight: 8 }])}
                 onPress={() => assignWorkoutToClient(item)}
               >
-                <Text style={styles.performText}>Send to Client</Text>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.performText)]}>Send to Client</Text>
               </TouchableOpacity>
             )}
             {!clientData && (
-              <TouchableOpacity style={styles.performButton} onPress={() => goToRunner(item)}>
-                <Text style={styles.performText}>Perform</Text>
+              <TouchableOpacity style={brandTheme.style(styles.performButton)} onPress={() => goToRunner(item)}>
+                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.performText)]}>Perform</Text>
               </TouchableOpacity>
             )}
           </View>
         </Pressable>
         {isOpen && (
-          <View style={styles.itemsSection}>
+          <View style={brandTheme.style(styles.itemsSection)}>
             {loadingItems ? (
               <ActivityIndicator />
             ) : itemList.length === 0 ? (
-              <Text style={styles.empty}>No exercises added yet.</Text>
+              <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.empty)]}>No exercises added yet.</Text>
             ) : (
               itemList.map((entry) => (
-                <View key={`${item.uniqueId}-${entry.workout_item_index}`} style={styles.itemRow}>
-                  <Text style={styles.itemTitle}>
+                <View key={`${item.uniqueId}-${entry.workout_item_index}`} style={brandTheme.style(styles.itemRow)}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.itemTitle)]}>
                     {entry.workout_item_index}. {entry.exercise_id}
                   </Text>
-                  <Text style={styles.itemMeta}>Muscle focus: {entry.muscle_focus || 'N/A'}</Text>
-                  <Text style={styles.itemMeta}>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.itemMeta)]}>Muscle focus: {entry.muscle_focus || 'N/A'}</Text>
+                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.itemMeta)]}>
                     Target sets: {entry.target_sets ?? '-'} · Target reps: {entry.target_reps ?? '-'}
                   </Text>
                 </View>
@@ -632,15 +636,15 @@ export default function WorkoutLibrary({ route,navigation }) {
 
   if (loading && !workouts.length) {
     return (
-      <SafeAreaView style={styles.center}>
+      <SafeAreaView style={brandTheme.style(styles.center)}>
         <ActivityIndicator size="large" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+    <SafeAreaView style={brandTheme.style(styles.safe)}>
+      {error ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.error)]}>{error}</Text> : null}
       <FlatList
         contentContainerStyle={styles.list}
         data={workouts}
@@ -649,7 +653,7 @@ export default function WorkoutLibrary({ route,navigation }) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListEmptyComponent={<Text style={styles.empty}>No workouts created yet.</Text>}
+        ListEmptyComponent={<Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.empty)]}>No workouts created yet.</Text>}
       />
     </SafeAreaView>
   );
@@ -669,7 +673,7 @@ async function resolveCustomerId(client) {
       query: LIST_CUSTOMERS_BY_USER,
       variables: { user_id },
     });
-    
+
     const existing = data?.listCustomers?.items?.[0]?.customer_id;
     if (existing) {
       console.log('resolveCustomerId: Found existing customer_id:', existing);
@@ -687,13 +691,13 @@ async function resolveCustomerId(client) {
 
     const res = await client.graphql({
       query: CREATE_CUSTOMER,
-      variables: { 
-        input: { 
-          customer_id: user_id, 
+      variables: {
+        input: {
+          customer_id: user_id,
           user_id,
           preferred_workout_location: null,
-          fitness_focus: null 
-        } 
+          fitness_focus: null
+        }
       },
     });
 
@@ -743,7 +747,7 @@ const toNumber = (value) => {
   return Number.isFinite(num) ? num : null;
 };
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#f8fafc',

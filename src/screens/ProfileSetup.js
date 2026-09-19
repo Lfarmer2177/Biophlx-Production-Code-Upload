@@ -1,3 +1,5 @@
+import BrandButton from '../Components/Button/BrandButton';
+import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ScrollView } from 'react-native';
 import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
@@ -74,6 +76,9 @@ const CREATE_TRAINER = /* GraphQL */ `
 `;
 
 export default function ProfileSetup({ navigation, route }) {
+  const brandTheme = useBIOPHLXTheme();
+  const styles = brandTheme.styles(baseStyles);
+
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const nextRoute = route?.params?.next || 'Home';
   const [form, setForm] = useState({
@@ -165,7 +170,7 @@ export default function ProfileSetup({ navigation, route }) {
       // Create-first strategy (avoids getUser dependency while resolvers are finalized)
       const attrs = await fetchUserAttributes().catch(() => ({}));
       const email = attrs?.email || 'no-email@biophlx.com';
-      
+
       const user_input = {
         user_id,
         first_name: form.first_name || null,
@@ -268,7 +273,7 @@ export default function ProfileSetup({ navigation, route }) {
         const now = new Date().toISOString();
         const current_user_id = user_id;
         console.log('ProfileSetup: Checking for existing trainer for user_id:', current_user_id);
-        
+
         try {
           const trainerRes = await client.graphql({
             query: LIST_TRAINERS_BY_USER,
@@ -295,10 +300,10 @@ export default function ProfileSetup({ navigation, route }) {
               stripe_onboarded: false,
               stripe_charges_enabled: false,
               stripe_payouts_enabled: false,
-              training_focus: form.fitness_focus && Array.isArray(form.fitness_focus) 
-                ? form.fitness_focus.join(',') 
-                : (typeof form.fitness_focus === 'string' && form.fitness_focus.trim() !== '' 
-                  ? form.fitness_focus 
+              training_focus: form.fitness_focus && Array.isArray(form.fitness_focus)
+                ? form.fitness_focus.join(',')
+                : (typeof form.fitness_focus === 'string' && form.fitness_focus.trim() !== ''
+                  ? form.fitness_focus
                   : "General Fitness")
             };
 
@@ -344,37 +349,37 @@ export default function ProfileSetup({ navigation, route }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Complete Your Profile</Text>
+      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.header)]}>Complete Your Profile</Text>
 
-      <View style={{ flexDirection: 'row', columnGap: 10, marginBottom: 12 }}>
-        <Button
+      <View style={brandTheme.style({ flexDirection: 'row', columnGap: 10, marginBottom: 12 })}>
+        <BrandButton color={brandTheme.colors.primary}
           title={`I am a Customer${form.role === 'customer' ? ' ✓' : ''}`}
           onPress={() => setForm({ ...form, role: 'customer' })}
         />
-        <Button
+        <BrandButton color={brandTheme.colors.primary}
           title={`I am a Trainer${form.role === 'trainer' ? ' ✓' : ''}`}
           onPress={() => setForm({ ...form, role: 'trainer' })}
         />
       </View>
 
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="first name"
         value={form.first_name}
         onChangeText={(v) => updateField('first_name', v)}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="last name"
         value={form.last_name}
         onChangeText={(v) => updateField('last_name', v)}
       />
 
-      <View style={{ width: '95%', marginVertical: 8 }}>
-        <Text style={styles.label}>Gender</Text>
-        <View style={{ flexDirection: 'row', columnGap: 10, marginTop: 6 }}>
+      <View style={brandTheme.style({ width: '95%', marginVertical: 8 })}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Gender</Text>
+        <View style={brandTheme.style({ flexDirection: 'row', columnGap: 10, marginTop: 6 })}>
           {['male', 'female'].map((g) => (
-            <Button
+            <BrandButton color={brandTheme.colors.primary}
               key={g}
               title={`${g === 'male' ? 'Male' : 'Female'}${form.gender === g ? ' ✓' : ''}`}
               onPress={() => updateField('gender', g)}
@@ -383,51 +388,51 @@ export default function ProfileSetup({ navigation, route }) {
         </View>
       </View>
 
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="city"
         value={form.city}
         onChangeText={(v) => updateField('city', v)}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="state"
         value={form.state}
         onChangeText={(v) => updateField('state', v)}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="age"
         keyboardType="number-pad"
         value={form.age}
         onChangeText={(v) => updateField('age', v)}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="current weight"
         keyboardType="decimal-pad"
         value={form.current_weight}
         onChangeText={(v) => updateField('current_weight', v)}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="height inches"
         keyboardType="decimal-pad"
         value={form.height_inches}
         onChangeText={(v) => updateField('height_inches', v)}
       />
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="fitness goal"
         value={form.fitness_goal}
         onChangeText={(v) => updateField('fitness_goal', v)}
       />
 
-      <View style={{ width: '95%', marginVertical: 8 }}>
-        <Text style={styles.label}>Workout Location</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
+      <View style={brandTheme.style({ width: '95%', marginVertical: 8 })}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Workout Location</Text>
+        <View style={brandTheme.style({ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 })}>
           {['commercial gym', 'home gym', 'studio'].map((opt) => (
-            <Button
+            <BrandButton color={brandTheme.colors.primary}
               key={opt}
               title={`${opt}${form.workout_location === opt ? ' ✓' : ''}`}
               onPress={() => updateField('workout_location', opt)}
@@ -436,21 +441,21 @@ export default function ProfileSetup({ navigation, route }) {
         </View>
       </View>
 
-      <TextInput
-        style={styles.input}
+      <TextInput placeholderTextColor={brandTheme.colors.muted} selectionColor={brandTheme.colors.accent}
+        style={[{color:brandTheme.colors.text, backgroundColor:brandTheme.colors.surface, borderColor:brandTheme.colors.border}, brandTheme.style(styles.input)]}
         placeholder="bio"
         value={form.bio}
         onChangeText={(v) => updateField('bio', v)}
       />
 
-      <View style={{ width: '95%', marginVertical: 8 }}>
-        <Text style={styles.label}>Fitness Focus (choose one or more)</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
+      <View style={brandTheme.style({ width: '95%', marginVertical: 8 })}>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.label)]}>Fitness Focus (choose one or more)</Text>
+        <View style={brandTheme.style({ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 })}>
           {['lose fat', 'gain muscle', 'muscular endurance', 'targeted muscle focus'].map((opt) => {
             const normalized = opt.toLowerCase();
             const selected = form.fitness_focus.includes(normalized);
             return (
-              <Button
+              <BrandButton color={brandTheme.colors.primary}
                 key={opt}
                 title={`${opt}${selected ? ' ✓' : ''}`}
                 onPress={() => {
@@ -465,14 +470,14 @@ export default function ProfileSetup({ navigation, route }) {
         </View>
       </View>
 
-      <Button title="Save & Continue" onPress={handleSave} />
-      <View style={{ height: 12 }} />
-      <Button title="Skip for now" onPress={handleSkip} />
+      <BrandButton color={brandTheme.colors.primary} title="Save & Continue" onPress={handleSave} />
+      <View style={brandTheme.style({ height: 12 })} />
+      <BrandButton color={brandTheme.colors.primary} title="Skip for now" onPress={handleSkip} />
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
