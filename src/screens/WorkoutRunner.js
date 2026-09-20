@@ -29,6 +29,7 @@ import base64 from 'react-native-base64';
 // Add these imports
 import { Svg, Polygon, Line, Circle, Path, Text as SvgText } from 'react-native-svg'; // Already there, add Path
 import { useBle } from '../context/BleContext';
+import { completedSetCount, currentSetNumber, readRepProgress } from '../context/firmwareSetProgress';
 import {
   BleUuids,
   DeviceCommands,
@@ -480,10 +481,11 @@ export default function WorkoutRunner({ route, navigation }) {
   const [repSnapshots, setRepSnapshots] = useState([]);
   const [repReviews, setRepReviews] = useState([]);
   const secondaryRepSamples = useRef(new Map());
-  const secondaryReviewCount = useRef(0);
+  const secondaryReviewCount = useRef(null);
   const repReviewRun = useRef(0);
   const pendingReviewSnapshots = useRef(new Map());
   const submittedReviews = useRef(new Set());
+  const repPersistenceRef = useRef(new Map());
   const [velocityArray, setVelocityArray] = useState([]);
   const [forceArray, setForceArray] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -503,8 +505,8 @@ export default function WorkoutRunner({ route, navigation }) {
   const sessionRepCountMap = useRef({});
 
   const [maxRom, setMaxRom] = useState(120);
-  const prevRepsRef = useRef(0);
-  const prevSetsRef = useRef(1);
+  const prevRepsRef = useRef(null);
+  const summarizedSetRepsRef = useRef(new Map());
   const weightRef = useRef(0);
   const workoutRef = useRef(workoutOptions[0] || DEFAULT_WORKOUT_OPTIONS[0]);
   const feedbackRef = useRef(feedback);
@@ -770,8 +772,10 @@ export default function WorkoutRunner({ route, navigation }) {
     if (!config || !slots) return;
     workoutRef.current = pendingWorkout || selectedWorkout;
     startingRef.current = true;
-    prevSetsRef.current = feedbackRef.current.sets || 1;
     repReviewRun.current += 1;
+    summarizedSetRepsRef.current.clear();
+    setSummaryModalVisible(false);
+    setRepSnapshots([]);
     secondaryRepSamples.current.clear();
     setPreparingBands(true);
     setPlacementError('');
@@ -1062,12 +1066,10 @@ export default function WorkoutRunner({ route, navigation }) {
   );
 
   useEffect(() => {
-    const reps = feedback.reps ?? 0;
-    const prevCount = prevRepsRef.current ?? 0;
-    if (reps < prevCount) { prevRepsRef.current = reps; return; }
-    if (workoutPhase !== 'active') { prevRepsRef.current = reps; return; }
-    if (reps > prevCount) {
-      const repsToAdd = reps - prevCount;
+    const { counter, previousReps: prevCount, repsToAdd } = readRepProgress(prevRepsRef.current, feedback);
+    prevRepsRef.current = counter;
+    if (workoutPhase !== 'active') return;
+    if (repsToAdd > 0) {
       const latest = feedbackRef.current;
       const vel = +(+latest.Velocity || 0).toFixed(2);
       const tutVal = +(+latest.TUT || 0).toFixed(2);
@@ -1076,7 +1078,7 @@ export default function WorkoutRunner({ route, navigation }) {
       const weightVal = weightRef.current || 0;
       const momentumVal = +(vel * weightVal).toFixed(2);
       const workoutLabel = workoutRef.current;
-      const setNumber = latest.sets || 1;
+      const setNumber = currentSetNumber(latest.sets);
 
       const reviews = [];
       const newSnapshots = [];
@@ -1088,6 +1090,7 @@ export default function WorkoutRunner({ route, navigation }) {
         const repIndex = prevCount + i + 1;
         const rowId = uuidv4();
         const snapshot = {
+          run: repReviewRun.current,
           repIndex,
           ROM: romVal,
           TUT: tutVal,
@@ -1125,26 +1128,23 @@ export default function WorkoutRunner({ route, navigation }) {
       setVelocityArray((prev) => [...prev, ...newVelocities]);
       setForceArray((prev) => [...prev, ...newMomenta]);
       setRows((prev) => [...prev, ...newRows]);
-      prevRepsRef.current = reps;
     }
-  }, [feedback.reps, persistRepSnapshot, workoutPhase, exerciseMap, deviceSettings]);
+  }, [feedback.reps, feedback.sets, persistRepSnapshot, workoutPhase, exerciseMap, deviceSettings]);
 
   // Capture band 2 once at its rep notification; pair by exercise, set and rep.
   // Re-run on either counter so notification arrival order does not matter.
   useEffect(() => {
-    const count = secondaryFeedback.reps ?? 0;
+    const { counter, repsToAdd } = readRepProgress(secondaryReviewCount.current, secondaryFeedback);
+    const count = counter.reps;
+    secondaryReviewCount.current = counter;
     if (workoutPhase !== 'active') {
-      secondaryReviewCount.current = count;
       secondaryRepSamples.current.clear();
       return;
     }
-    const previous = secondaryReviewCount.current;
-    if (count < previous) secondaryReviewCount.current = count;
-    if (count > previous) {
+    if (repsToAdd > 0) {
       const sample = secondaryFeedbackRef.current;
-      const key = `${repReviewRun.current}:${workoutRef.current}:${sample.sets || 1}:${count}`;
-      secondaryRepSamples.current.set(key, count - previous === 1 ? { rom: sample.ROM, tut: sample.TUT, velocity: sample.Velocity } : null);
-      secondaryReviewCount.current = count;
+      const key = `${repReviewRun.current}:${workoutRef.current}:${currentSetNumber(sample.sets)}:${count}`;
+      secondaryRepSamples.current.set(key, repsToAdd === 1 ? { rom: sample.ROM, tut: sample.TUT, velocity: sample.Velocity } : null);
     }
     setRepReviews(items => items.map(item => {
       if (item.available) return item;
@@ -1155,7 +1155,7 @@ export default function WorkoutRunner({ route, navigation }) {
       const rom = item.primaryAvailable ? averageBands(item.primaryRom, secondaryRom) : null;
       return { ...item, secondaryMetrics, secondaryRom, rom, available: rom != null };
     }));
-  }, [feedback.reps, secondaryFeedback.reps, workoutPhase]);
+  }, [feedback.reps, feedback.sets, secondaryFeedback.reps, secondaryFeedback.sets, workoutPhase]);
 
   useEffect(() => {
     for (const review of repReviews) {
@@ -1171,82 +1171,54 @@ export default function WorkoutRunner({ route, navigation }) {
       setRepSnapshots(previous => [...previous, snapshot]);
       setRows(previous => previous.map(row => row.id === review.id ? { ...row, awaitingBands: false,
         band_metrics: snapshot.BandMetrics, score, rom: snapshot.ROM, tut: snapshot.TUT, velocity: snapshot.Velocity, momentum: snapshot.Momentum } : row));
-      persistRepSnapshot(snapshot);
+      repPersistenceRef.current.set(review.id, persistRepSnapshot(snapshot));
       pendingReviewSnapshots.current.delete(review.id);
     }
   }, [repReviews, persistRepSnapshot]);
 
-  //  useEffect(() => {
-  //   const sets = feedback.sets;
-  //   if (sets < (prevSetsRef.current ?? 0)) {
-  //     prevSetsRef.current = sets;
-  //     return;
-  //   }
-  //   if (sets > 0 && sets !== prevSetsRef.current && repSnapshots.length > 0) {
-  //     const arr = [...repSnapshots];
-  //     const now = new Date();
-  //     const summaryObj = {
-  //       SetNumber: sets,
-  //       RepsCompleted: arr.length,
-  //       Score: arr.some(r => r.Score != null) ? +average(arr.filter(r => r.Score != null).map(r => r.Score)).toFixed(2) : null,
-  //       ScoreSeries: arr.filter(r => r.Score != null).map((r, index) => ({
-  //         key: `score-${index + 1}`,
-  //         label: `${index + 1}`,
-  //         value: Number(r.Score) || 0,
-  //       })),
-  //       Momentum: +sum(arr.map((r) => r.Momentum)).toFixed(2),
-  //       TUT: +average(arr.map((r) => r.TUT)).toFixed(2),
-  //       Velocity: +average(arr.map((r) => r.Velocity)).toFixed(2),
-  //       ROM: +average(arr.map((r) => r.ROM)).toFixed(2),
-  //       Date: now.toISOString().split('T')[0],
-  //       Time: now.toLocaleTimeString(),
-  //     };
-  //     const setNoValue = arr[0]?.setNo || sets || 1;
-  //     const workoutValue = arr[0]?.workout || workoutRef.current;
-  //     const weightValue = arr[0]?.weight ?? weightRef.current;
-  //     persistSet({ workout: workoutValue, setNo: setNoValue, weight: weightValue });
-  //     setSummary(summaryObj);
-  //     setSummaryModalVisible(true);
-  //     setRepSnapshots([]);
-  //     prevSetsRef.current = sets;
-  //     prevRepsRef.current = 0;
-  //   }
-  // }, [feedback.sets, repSnapshots, persistSet]);
-
-
-
+  // Each band advances independently. Summarize a set only after both bands
+  // complete it and its paired rep readings are available. Retain snapshots so
+  // delayed readings cannot be folded into the following set.
   useEffect(() => {
-    const sets = feedback.sets;
-    if (sets > 0 && sets !== prevSetsRef.current && repSnapshots.length > 0) {
-      const arr = [...repSnapshots];
+    if (workoutPhase !== 'active') return;
+    const completedThrough = Math.min(completedSetCount(feedback.sets), completedSetCount(secondaryFeedback.sets));
+    const groups = new Map();
+    for (const snapshot of repSnapshots) {
+      if (snapshot.run !== repReviewRun.current || snapshot.setNo > completedThrough) continue;
+      const key = `${snapshot.run}:${snapshot.workout}:${snapshot.setNo}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(snapshot);
+    }
+    for (const [key, arr] of groups) {
+      arr.sort((a, b) => a.repIndex - b.repIndex);
+      const first = arr[0];
+      const snapshotIds = new Set(arr.map(snapshot => snapshot.rowId));
+      if (repReviews.some(review => review.run === first.run && review.workout === first.workout &&
+        review.setNo === first.setNo && (!review.available || !snapshotIds.has(review.id)))) continue;
+      if (summarizedSetRepsRef.current.get(key) === arr.length) continue;
+      summarizedSetRepsRef.current.set(key, arr.length);
       const now = new Date();
       const summaryObj = {
-        SetNumber: sets,
+        SetNumber: first.setNo,
         RepsCompleted: arr.length,
         Score: arr.some(r => r.Score != null) ? +average(arr.filter(r => r.Score != null).map(r => r.Score)).toFixed(2) : null,
         ScoreSeries: arr.filter(r => r.Score != null).map((r, index) => ({
-          key: `score-${index + 1}`,
-          label: `${index + 1}`,
-          value: Number(r.Score) || 0,
+          key: `score-${index + 1}`, label: `${index + 1}`, value: Number(r.Score) || 0,
         })),
-        Momentum: +sum(arr.map((r) => r.Momentum)).toFixed(2),
-        TUT: +average(arr.map((r) => r.TUT)).toFixed(2),
-        Velocity: +average(arr.map((r) => r.Velocity)).toFixed(2),
-        ROM: +average(arr.map((r) => r.ROM)).toFixed(2),
+        Momentum: +sum(arr.map(r => r.Momentum)).toFixed(2),
+        TUT: +average(arr.map(r => r.TUT)).toFixed(2),
+        Velocity: +average(arr.map(r => r.Velocity)).toFixed(2),
+        ROM: +average(arr.map(r => r.ROM)).toFixed(2),
         Date: now.toISOString().split('T')[0],
         Time: now.toLocaleTimeString(),
       };
-      const setNoValue = arr[0]?.setNo || sets || 1;
-      const workoutValue = arr[0]?.workout || workoutRef.current;
-      const weightValue = arr[0]?.weight ?? weightRef.current;
-      persistSet({ workout: workoutValue, setNo: setNoValue, weight: weightValue });
+      Promise.all(arr.map(snapshot => repPersistenceRef.current.get(snapshot.rowId)))
+        .then(() => persistSet({ workout: first.workout, setNo: first.setNo, weight: first.weight }))
+        .catch(error => console.warn('Set sync failed', error?.message || error));
       setSummary(summaryObj);
       setSummaryModalVisible(true);
-      setRepSnapshots([]);
-      prevSetsRef.current = sets;
-      prevRepsRef.current = 0;
     }
-  }, [feedback.sets, repSnapshots, persistSet]);
+  }, [feedback.sets, secondaryFeedback.sets, repSnapshots, repReviews, persistSet, workoutPhase]);
 
   const saveSession = async () => {
     if (rows.some(row => row.awaitingBands)) {
@@ -1503,7 +1475,8 @@ export default function WorkoutRunner({ route, navigation }) {
         ['TUT', formatValue(data?.TUT, 2)],
         ['Velocity', formatValue(data?.Velocity, 2)],
         ['Reps', formatValue(data?.reps)],
-        ['Set Complete', formatValue(data?.setc ?? data?.sets)],
+        ['Current set', currentSetNumber(data?.sets)],
+        ['Completed sets', formatValue(data?.setc ?? data?.sets)],
       ];
 
       return (
@@ -1524,6 +1497,24 @@ export default function WorkoutRunner({ route, navigation }) {
     return (
       <View style={brandTheme.style(styles.listHeader)}>
         <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.header)]}>Perform Workout</Text>
+        {workoutPhase === 'active' && (
+          <View accessibilityLiveRegion="polite" style={brandTheme.style(styles.planCard)}>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planTitle)]}>
+              {feedback.sets === secondaryFeedback.sets
+                ? `Set ${currentSetNumber(feedback.sets)} in progress`
+                : 'Advance the other band before starting your next rep'}
+            </Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planRowMeta)]}>
+              {bandLabel(deviceSettings?.primary)}: set {currentSetNumber(feedback.sets)} · {feedback.reps ?? 0} reps
+            </Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planRowMeta)]}>
+              {bandLabel(deviceSettings?.secondary)}: set {currentSetNumber(secondaryFeedback.sets)} · {secondaryFeedback.reps ?? 0} reps
+            </Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planRowMeta)]}>
+              Hold each band's center button for 3 seconds to advance its set. Release after the vibration.
+            </Text>
+          </View>
+        )}
         {workoutPlan && (
           <View style={brandTheme.style(styles.planCard)}>
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planTitle)]}>{workoutPlan.name || 'Scheduled Workout'}</Text>
@@ -1926,7 +1917,7 @@ export default function WorkoutRunner({ route, navigation }) {
       >
         <View style={brandTheme.style(styles.modalOverlay)}>
           <View style={brandTheme.style(styles.modalCard)}>
-            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.modalTitle)]}>Workout Summary</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.modalTitle)]}>Set {summary?.SetNumber} complete</Text>
             {summary && (
               <>
                 <IntensityBars
@@ -1973,7 +1964,7 @@ export default function WorkoutRunner({ route, navigation }) {
                   </View>
                 ) : null}
                 {[
-                  ['Sets', summary.SetNumber],
+                  ['Set', summary.SetNumber],
                   ['Reps', summary.RepsCompleted],
                   ['Velocity', summary.Velocity.toFixed(2)],
                   ['ROM', Math.round(summary.ROM)],

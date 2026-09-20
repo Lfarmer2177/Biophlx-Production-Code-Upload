@@ -1,4 +1,5 @@
 import { bandRating } from '../Components/rep-feedback/repFeedback';
+import { applyFirmwareSetCount } from './firmwareSetProgress';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, PermissionsAndroid, Platform } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
@@ -156,6 +157,7 @@ export function BleProvider({ children }) {
     const updateFeedbackForSlot = useCallback((slot, label, value) => {
         const setter = slot === 'secondary' ? setSecondaryFeedback : setFeedback;
         setter((prev) => {
+            if (label === 'sets') return applyFirmwareSetCount(prev, value);
             const next = { ...prev };
             if (label === 'Velocity') {
                 const limb = deviceSettings?.[slot]?.limb ?? ExerciseLimb.undefined.value;
@@ -166,10 +168,6 @@ export function BleProvider({ children }) {
             if (label === 'ROM') next.ROM = value;
             if (label === 'Current Position') next['Current Position'] = value;
             if (label === 'reps') next.reps = value;
-            if (label === 'sets') {
-                next.sets = value;
-                next.setc = value;
-            }
             if (label === 'exerciseStage') next.exerciseStage = value;
             if (label === 'ROM') next.Score = bandRating(value);
             return next;
