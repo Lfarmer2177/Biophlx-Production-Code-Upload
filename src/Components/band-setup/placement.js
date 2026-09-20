@@ -1,8 +1,8 @@
 // Placement follows the hardware exercise types, not a guessed muscle-name match.
 export function placementForType(type) {
   if (type >= 0 && type <= 5) return 'arms';
-  if (type >= 6 && type <= 10) return 'legs';
-  if (type >= 11 && type <= 13) return 'combined';
+  if (type >= 6 && type <= 11) return 'legs';
+  if (type >= 12 && type <= 13) return 'combined';
   return null;
 }
 

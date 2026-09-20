@@ -78,7 +78,7 @@ const WORKOUT_LIBRARY = [
   { label: 'Barbell Back Squat', command: workoutCommand(ExerciseType.barbellSquat.value, ExerciseLimb.leg.value) },
   { label: 'Bodyweight Front Lunges', command: workoutCommand(ExerciseType.dumbellLunge.value, ExerciseLimb.leg.value), aliases: ['Front Lunges'] },
   { label: 'Laying Leg Raises', command: workoutCommand(ExerciseType.layingLegRaise.value, ExerciseLimb.leg.value) },
-  { label: 'Mountain Climbers', command: workoutCommand(ExerciseType.mountainClimbers.value, ExerciseLimb.undefined.value) },
+  { label: 'Mountain Climbers', command: workoutCommand(ExerciseType.mountainClimbers.value, ExerciseLimb.leg.value) },
   {
     label: 'Dumbbell Squat and Overhead Press',
     command: workoutCommand(ExerciseType.squatAndPressLower.value, ExerciseLimb.leg.value),
