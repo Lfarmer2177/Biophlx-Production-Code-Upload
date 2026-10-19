@@ -1,4 +1,8 @@
-import ExerciseHistory, { MuscleBreakdown } from '../Components/history/HistoryCards';
+import MovementSummary from '../Components/history/MovementSummary';
+import useSessionMovement from '../Components/history/useSessionMovement';
+import { localWorkoutDate, selectMovementSessions } from '../Components/history/movementMetrics';
+import { loadSessionDetails } from '../Components/history/sessionHistoryData';
+import ExerciseHistory from '../Components/history/HistoryCards';
 import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -27,100 +31,6 @@ import {
   listExercises,
   getExerciseQuery,
 } from '../graphql/queries';
-import Svg, { Path, G, Text as SvgText } from 'react-native-svg';
-import Body from '../Components/react-native-body-highlighter';
-
-const MAX_SESSION_ITEM_INDEX = 20;
-const MAX_ROM = 120;
-const MAX_TUT = 5; // seconds
-const MAX_VELOCITY = 2; // m/s
-const MAX_MOMENTUM = 300; // heuristic cap for visualization
-const clampPct = (v) => Math.max(0, Math.min(100, v || 0));
-const getBarColor = (value) => {
-  const v = clampPct(value);
-  if (v < 25) return '#ef4444';
-  if (v < 50) return '#f97316';
-  if (v < 75) return '#facc15';
-  return '#22c55e';
-};
-
-const muscleEmoji = {
-  Legs: 'Legs',
-  Chest: 'Chest',
-  Back: 'Back',
-  Shoulders: 'Shoulders',
-  Abs: 'Abs',
-  Arms: 'Arms',
-};
-
-const pieColors = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#8b5cf6', '#ec4899'];
-const bodyParts = {
-  trapezius: { muscleName: 'Traps', side: 'Both' },
-  triceps: { muscleName: 'Triceps', side: 'Both' },
-  forearm: { muscleName: 'Forearm', side: 'Both' },
-  adductors: { muscleName: 'Adductors', side: 'Both' },
-  calves: { muscleName: 'Calves', side: 'Both' },
-  neck: { muscleName: 'Neck', side: 'Both' },
-  deltoids: { muscleName: 'Deltoids', side: 'Both' },
-  hands: { muscleName: 'Hands', side: 'Both' },
-  feet: { muscleName: 'Feet', side: 'Both' },
-  head: { muscleName: 'Head', side: 'Both' },
-  ankles: { muscleName: 'Ankles', side: 'Both' },
-  tibialis: { muscleName: 'Tibialis', side: 'Front' },
-  obliques: { muscleName: 'Abs', side: 'Front' },
-  chest: { muscleName: 'Chest', side: 'Front' },
-  biceps: { muscleName: 'Biceps', side: 'Front' },
-  abs: { muscleName: 'Abs', side: 'Front' },
-  quadriceps: { muscleName: 'Quads', side: 'Front' },
-  knees: { muscleName: 'Knees', side: 'Front' },
-  'upper-back': { muscleName: 'Upper Back', side: 'Back' },
-  'lower-back': { muscleName: 'Lower Back', side: 'Back' },
-  hamstring: { muscleName: 'Hamstrings', side: 'Back' },
-  gluteal: { muscleName: 'Glutes', side: 'Back' },
-};
-
-const MusclePieChart = ({ segments, size = 120 }) => {
-  const brandTheme = useBIOPHLXTheme();
-  const styles = brandTheme.styles(baseStyles);
-
-  if (!segments.length) return null;
-  const radius = size / 2;
-  let startAngle = 0;
-  const paths = segments.map((seg, idx) => {
-    const pct = seg.percent || 0;
-    const angle = (pct / 100) * Math.PI * 2;
-    const endAngle = startAngle + angle;
-    const largeArc = angle > Math.PI ? 1 : 0;
-    const x1 = radius + radius * Math.cos(startAngle);
-    const y1 = radius + radius * Math.sin(startAngle);
-    const x2 = radius + radius * Math.cos(endAngle);
-    const y2 = radius + radius * Math.sin(endAngle);
-    const d = `M ${radius} ${radius} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-    startAngle = endAngle;
-    return { d, color: pieColors[idx % pieColors.length], label: seg.name, percent: pct };
-  });
-  return (
-    <View style={brandTheme.style({ alignItems: 'center' })}>
-      <Svg width={size} height={size} style={brandTheme.style({ marginVertical: 8 })}>
-        <G>
-          {paths.map((p, idx) => (
-            <Path key={idx} d={p.d} fill={p.color} />
-          ))}
-        </G>
-      </Svg>
-      <View style={brandTheme.style({ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' })}>
-        {paths.map((p, idx) => (
-          <View key={`legend-${idx}`} style={brandTheme.style({ flexDirection: 'row', alignItems: 'center', gap: 4 })}>
-            <View style={brandTheme.style({ width: 10, height: 10, borderRadius: 5, backgroundColor: p.color })} />
-            <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ fontSize: 12, color: '#0f172a' })]}>
-              {p.label} {p.percent.toFixed(0)}%
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
 
 const LIST_CUSTOMERS_BY_USER = /* GraphQL */ `
   query ListCustomers($user_id: ID!) {
@@ -135,7 +45,7 @@ export default function SessionsDashboard({ route, navigation }) {
   const brandTheme = useBIOPHLXTheme();
   const styles = brandTheme.styles(baseStyles);
 
-  const { fromClientList, clientData } = route.params || {};
+  const { fromClientList, clientData } = route?.params || {};
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
   const [customerId, setCustomerId] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -144,18 +54,9 @@ export default function SessionsDashboard({ route, navigation }) {
   const [expandedSessionId, setExpandedSessionId] = useState(null);
   const [sessionDetailsMap, setSessionDetailsMap] = useState({});
   const [sessionLoadingMap, setSessionLoadingMap] = useState({});
-  const [repsByItem, setRepsByItem] = useState({});
-  const [repsLoadingByItem, setRepsLoadingByItem] = useState({});
-  const [openItems, setOpenItems] = useState({});
   const [exerciseMap, setExerciseMap] = useState({});
-  const [exerciseFetchSet, setExerciseFetchSet] = useState(new Set());
   const [monthDate, setMonthDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
-  const [bodyData, setBodyData] = useState([]);
-  const [muscleMomentumList, setMuscleMomentumList] = useState([]);
-  const [totalMomentumData, setTotalMomentumData] = useState(0);
-  const [sessionMomentumMap, setSessionMomentumMap] = useState({});
-  const [momentumByDate, setMomentumByDate] = useState({});
   const [isMessageSheetVisible, setIsMessageSheetVisible] = useState(false);
   const [profileImage, setProfileImage] = useState('https://via.placeholder.com/80');
 
@@ -189,15 +90,7 @@ export default function SessionsDashboard({ route, navigation }) {
     return [];
   }, []);
 
-  const normalizeDate = useCallback((value) => {
-    if (!value) return null;
-    try {
-      const d = new Date(value);
-      return d.toISOString().split('T')[0];
-    } catch {
-      return null;
-    }
-  }, []);
+  const normalizeDate = localWorkoutDate;
 
   const fetchSessions = useCallback(
     async (custId) => {
@@ -209,10 +102,11 @@ export default function SessionsDashboard({ route, navigation }) {
       try {
         setLoading(true);
         setError(null);
-        const { data } = await client.graphql({
+        const { data, errors } = await client.graphql({
           query: listSessionsByCustomerQuery,
           variables: { customer_id: custId, limit: 50 },
         });
+        if (errors?.length || !data?.listSessionsByCustomer) throw new Error('Session history unavailable.');
         const list = asList(data?.listSessionsByCustomer);
         list.sort((a, b) => new Date(b.workout_date || b.created_at) - new Date(a.workout_date || a.created_at));
         setSessions(list);
@@ -226,8 +120,9 @@ export default function SessionsDashboard({ route, navigation }) {
     [client]
   );
 
+  const initialDateChosen = useRef(false);
   useEffect(() => {
-    if (!sessions.length) return;
+    if (!sessions.length || initialDateChosen.current) return;
     // Default to most recent session date if nothing selected
     const recent = sessions
       .map((s) => normalizeDate(s.workout_date || s.created_at))
@@ -235,8 +130,9 @@ export default function SessionsDashboard({ route, navigation }) {
       .sort()
       .pop();
     if (recent && !selectedDate) {
+      initialDateChosen.current = true;
       setSelectedDate(recent);
-      setMonthDate(new Date(recent));
+      setMonthDate(new Date(`${recent}T12:00:00`));
     }
   }, [sessions, normalizeDate, selectedDate]);
 
@@ -260,10 +156,11 @@ export default function SessionsDashboard({ route, navigation }) {
           return;
         }
 
-        const { data } = await client.graphql({
+        const { data, errors } = await client.graphql({
           query: LIST_CUSTOMERS_BY_USER,
           variables: { user_id },
         });
+        if (errors?.length || !Array.isArray(data?.listCustomers?.items)) throw new Error('Customer profile unavailable.');
         const items = data?.listCustomers?.items || [];
         const cid = items[0]?.customer_id;
         if (cid) {
@@ -281,140 +178,15 @@ export default function SessionsDashboard({ route, navigation }) {
     })();
   }, [fetchSessions, client, fromClientList, clientData]);
 
-  const ensureSessionDetails = useCallback(
-    async (session_id) => {
-      if (!session_id) return;
-      try {
-        setSessionLoadingMap((prev) => ({ ...prev, [session_id]: true }));
-        const { data: itemData } = await client.graphql({
-          query: listSessionItemsBySession,
-          variables: { session_id, limit: 50 },
-        });
-        const items = asList(itemData?.listSessionItemsBySession);
-        console.log('Session items fetch', { session_id, count: items.length, raw: itemData });
-
-        // Pull sets across indexes to ensure we display sets even if session items are missing.
-        const setsByIndex = {};
-        let setMisses = 0;
-        for (let idx = 1; idx <= MAX_SESSION_ITEM_INDEX && setMisses < 3; idx += 1) {
-          try {
-            const { data } = await client.graphql({
-              query: listSessionItemSetsQuery,
-              variables: { session_id, session_item_index: idx, limit: 50 },
-            });
-            const found = asList(data?.listSessionItemSets);
-            if (found.length) {
-              setsByIndex[idx] = found;
-              setMisses = 0;
-            } else {
-              setMisses += 1;
-            }
-          } catch (err) {
-            console.log('Fetch sets failed', err);
-            setMisses += 1;
-          }
-        }
-
-        const allReps = [];
-        let nextToken;
-        do {
-          const {data} = await client.graphql({query:listSessionItemRepsQuery, variables:{session_id,limit:500,nextToken}});
-          allReps.push(...asList(data?.listSessionItemReps));
-          nextToken=data?.listSessionItemReps?.nextToken;
-        } while(nextToken);
-        const detailedItems = await Promise.all(
-          items.map(async (item) => {
-            const sets = setsByIndex[item.session_item_index] || [];
-            const reps = allReps.filter(rep => Number(rep.session_item_index) === Number(item.session_item_index));
-            return { ...item, sets, reps };
-          })
-        );
-        setSessionDetailsMap((prev) => ({ ...prev, [session_id]: detailedItems }));
-      } catch (err) {
-        console.log('Fetch session details failed', err);
-        setError(err?.errors?.[0]?.message || 'Failed to load session data.');
-      } finally {
-        setSessionLoadingMap((prev) => ({ ...prev, [session_id]: false }));
-      }
-    },
-    [asList, client, sessionDetailsMap]
-  );
-
-  const fetchRepsForItem = useCallback(
-    async (session_id, session_item_index) => {
-      if (!session_id || !session_item_index) return;
-      const key = `${session_id}::${session_item_index}`;
-      try {
-        setRepsLoadingByItem((prev) => ({ ...prev, [key]: true }));
-        const { data } = await client.graphql({
-          query: listSessionItemRepsQuery,
-          variables: { session_id, limit: 500 },
-        });
-        const allReps = asList(data?.listSessionItemReps);
-        const filtered = allReps.filter((rep) => rep?.session_item_index === session_item_index);
-        setRepsByItem((prev) => ({ ...prev, [key]: filtered }));
-      } catch (err) {
-        console.log('Fetch reps failed', err);
-      } finally {
-        setRepsLoadingByItem((prev) => ({ ...prev, [key]: false }));
-      }
-    },
-    [asList, client]
-  );
-
-  const toggleItem = useCallback(
-    (session_id, session_item_index) => {
-      const key = `${session_id}::${session_item_index}`;
-      setOpenItems((prev) => {
-        const next = { ...prev };
-        next[key] = !next[key];
-        return next;
-      });
-      if (!repsByItem[key]) {
-        fetchRepsForItem(session_id, session_item_index);
-      }
-    },
-    [fetchRepsForItem, repsByItem]
-  );
-
-  const fetchExerciseIfMissing = useCallback(
-    async (exercise_id) => {
-      if (!exercise_id) return;
-      if (exerciseMap[exercise_id]) return;
-      if (exerciseFetchSet.has(exercise_id)) return;
-      setExerciseFetchSet((prev) => new Set(prev).add(exercise_id));
-      try {
-        const { data } = await client.graphql({
-          query: getExerciseQuery,
-          variables: { exercise_id },
-        });
-        const ex = data?.getExercise;
-        if (ex?.exercise_id) {
-          setExerciseMap((prev) => ({ ...prev, [ex.exercise_id]: ex }));
-        }
-      } catch (err) {
-        console.log('Fetch exercise failed', err);
-      } finally {
-        setExerciseFetchSet((prev) => {
-          const next = new Set(prev);
-          next.delete(exercise_id);
-          return next;
-        });
-      }
-    },
-    [client, exerciseFetchSet, exerciseMap]
-  );
-
-  const buildRepBars = useCallback((rep) => {
-    const toPct = (val, max) => clampPct(((Number(val) || 0) / max) * 100);
-    return [
-      { label: 'Score', percent: clampPct(Number(rep?.score) || 0), display: rep?.score ?? 'N/A' },
-      { label: 'ROM', percent: toPct(rep?.rom, MAX_ROM), display: rep?.rom ?? 'N/A' },
-      { label: 'TUT', percent: toPct(rep?.tut, MAX_TUT), display: rep?.tut ?? 'N/A' },
-      { label: 'Vel', percent: toPct(rep?.velocity, MAX_VELOCITY), display: rep?.velocity ?? 'N/A' },
-      { label: 'Mom', percent: toPct(rep?.momentum, MAX_MOMENTUM), display: rep?.momentum ?? 'N/A' },
-    ];
-  }, []);
+  const ensureSessionDetails = useCallback(async sessionId => {
+    setSessionLoadingMap(previous => ({ ...previous, [sessionId]: true }));
+    try {
+      const details = await loadSessionDetails(client, sessionId);
+      setError(null);
+      setSessionDetailsMap(previous => ({ ...previous, [sessionId]: details }));
+    } catch { setError('Session details could not be loaded. Close and reopen the session to retry.'); }
+    finally { setSessionLoadingMap(previous => ({ ...previous, [sessionId]: false })); }
+  }, [client]);
 
   const toggleSession = async (session_id) => {
     if (expandedSessionId === session_id) {
@@ -425,205 +197,18 @@ export default function SessionsDashboard({ route, navigation }) {
     await ensureSessionDetails(session_id);
   };
 
-  const fetchSessionMomentum = useCallback(
-    async (session_id) => {
-      if (!session_id) return 0;
-      try {
-        const { data } = await client.graphql({
-          query: listSessionItemRepsQuery,
-          variables: { session_id, limit: 500 },
-        });
-        const reps = asList(data?.listSessionItemReps);
-        return reps.reduce((sum, rep) => sum + (Number(rep?.momentum) || 0), 0);
-      } catch (err) {
-        console.log('Fetch session momentum failed', err);
-        return 0;
-      }
-    },
-    [asList, client]
-  );
-
-  const distributionRun = useRef(0);
-  const buildBodyHighlight = useCallback(async () => {
-    const run = ++distributionRun.current;
-    try {
-      const exMap = {...exerciseMap};
-      const year = monthDate.getFullYear();
-      const month = monthDate.getMonth();
-      const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
-      let targetSessions =
-        selectedDate && sessions.length
-          ? sessions.filter((s) => normalizeDate(s.workout_date || s.created_at) === selectedDate)
-          : sessions.filter((s) => {
-              const dateStr = normalizeDate(s.workout_date || s.created_at);
-              return dateStr && dateStr.startsWith(monthPrefix);
-            });
-      if (!targetSessions.length) {
-        setBodyData([]);
-        setMuscleMomentumList([]);
-        setTotalMomentumData(0);
-        return;
-      }
-
-      const muscleTotals = {};
-      let totalMomentum = 0;
-
-      for (const sess of targetSessions) {
-        const { data: itemsData } = await client.graphql({
-          query: listSessionItemsBySession,
-          variables: { session_id: sess.session_id, limit: 50 },
-        });
-        const items = asList(itemsData?.listSessionItemsBySession);
-
-        const { data: repsData } = await client.graphql({
-          query: listSessionItemRepsQuery,
-          variables: { session_id: sess.session_id, limit: 500 },
-        });
-        const reps = asList(repsData?.listSessionItemReps);
-
-        const setsByIndex = {};
-        for (let idx = 1; idx <= MAX_SESSION_ITEM_INDEX; idx += 1) {
-          try {
-            const { data } = await client.graphql({
-              query: listSessionItemSetsQuery,
-              variables: { session_id: sess.session_id, session_item_index: idx, limit: 50 },
-            });
-            const found = asList(data?.listSessionItemSets);
-            if (found.length) setsByIndex[idx] = found;
-          } catch {
-            // ignore
-          }
-        }
-
-        for (const item of items) {
-          if (item.exercise_id && !exMap[item.exercise_id]) {
-            const {data} = await client.graphql({query:getExerciseQuery,variables:{exercise_id:item.exercise_id}});
-            if (data?.getExercise) exMap[item.exercise_id]=data.getExercise;
-          }
-        }
-        items.forEach((item) => {
-          const itemReps = reps.filter((r) => r?.session_item_index === item.session_item_index);
-          let momentum = itemReps.reduce((sum, r) => sum + (Number(r?.momentum) || 0), 0);
-          if (!momentum) {
-            const sets = setsByIndex[item.session_item_index] || [];
-            momentum = sets.reduce((sum, s) => sum + (Number(s?.momentum) || 0), 0);
-          }
-          totalMomentum += momentum;
-          const ex = exMap[item.exercise_id];
-          const mg = Array.isArray(ex?.muscle_group) ? ex.muscle_group : [];
-          let parsed = mg
-            .map((entry) => {
-              if (typeof entry !== 'string') return null;
-              const parts = entry.split(':').map((p) => p.trim());
-              if (parts.length < 2) return { name: entry.trim(), weight: null };
-              const weight = parseFloat(parts[1]);
-              return { name: parts[0], weight: Number.isFinite(weight) ? weight : null };
-            })
-            .filter(Boolean);
-          let totalWeight = parsed.reduce((sum, p) => (p.weight !== null ? sum + p.weight : sum), 0);
-          if ((!parsed.length || !totalWeight) && item.muscle_focus) {
-            parsed = [{ name: item.muscle_focus, weight: 1 }];
-            totalWeight = 1;
-          }
-          if (momentum > 0 && totalWeight > 0) {
-            parsed.forEach((p) => {
-              if (p.weight === null) return;
-              const portion = (momentum * p.weight) / totalWeight;
-              muscleTotals[p.name] = (muscleTotals[p.name] || 0) + portion;
-            });
-          }
-        });
-      }
-
-      const muscleTotalsObj = {};
-      Object.keys(muscleTotals).forEach((key) => {
-        muscleTotalsObj[key] = { total: muscleTotals[key], muscleName: key };
-      });
-
-      const newBodyData = Object.keys(bodyParts)
-        .map((part) => {
-          const { muscleName, side } = bodyParts[part];
-          const muscleInfo = muscleTotalsObj[muscleName];
-          if (muscleInfo && muscleInfo.total > 0) {
-            const percentage = totalMomentum ? ((muscleInfo.total / totalMomentum) * 100).toFixed(0) : 0;
-            return {
-              slug: part.toLowerCase(),
-              intensity: percentage >= 60 ? 3 : percentage >= 30 ? 2 : 1,
-              total: muscleInfo.total,
-              name: muscleInfo.muscleName,
-              side,
-              percentage,
-            };
-          }
-          return null;
-        })
-        .filter(Boolean);
-
-      if (run !== distributionRun.current) return;
-      setBodyData(newBodyData);
-      setTotalMomentumData(Number(totalMomentum.toFixed(1)));
-      const momentumList = Object.keys(muscleTotalsObj)
-        .map((key) => {
-          const total = muscleTotalsObj[key].total;
-          const percent = totalMomentum ? ((total / totalMomentum) * 100).toFixed(1) : '0';
-          return { name: key, total, percent };
-        })
-        .sort((a, b) => b.total - a.total);
-      setMuscleMomentumList(momentumList);
-    } catch (err) {
-      if (run !== distributionRun.current) return;
-      console.log('Body highlight build failed', err);
-      setBodyData([]);
-      setMuscleMomentumList([]);
-      setTotalMomentumData(0);
-    }
-  }, [asList, client, exerciseMap, monthDate, normalizeDate, selectedDate, sessions]);
+  const movement = useSessionMovement(client, sessions);
+  const selectedSessions = selectMovementSessions(sessions, selectedDate, monthDate);
+  const selectedReps = selectedSessions.flatMap(session => movement.records[session.session_id] || []);
+  const movementError = selectedSessions.some(session => movement.errors[session.session_id]);
   useEffect(() => {
-    let cancelled = false;
-    const computeMomentum = async () => {
-      if (!sessions.length) {
-        if (!cancelled) {
-          setSessionMomentumMap({});
-          setMomentumByDate({});
-        }
-        return;
-      }
-      setSessionMomentumMap((prev) => {
-        const missingSessions = sessions.filter((s) => s.session_id && prev[s.session_id] === undefined);
-        if (!missingSessions.length) return prev;
-        const newMomentumBySession = { ...prev };
-        const run = async () => {
-          for (const s of missingSessions) {
-            const total = await fetchSessionMomentum(s.session_id);
-            newMomentumBySession[s.session_id] = total;
-          }
-          if (cancelled) return;
-          setSessionMomentumMap(newMomentumBySession);
-        };
-        run();
-        return prev;
-      });
-    };
-    computeMomentum();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessions, fetchSessionMomentum]);
-
-  useEffect(() => {
-    buildBodyHighlight();
-  }, [buildBodyHighlight]);
-
-  useEffect(() => {
-    const dateTotals = {};
-    sessions.forEach((s) => {
-      const dateStr = normalizeDate(s.workout_date || s.created_at);
-      if (!dateStr) return;
-      const total = sessionMomentumMap[s.session_id] || 0;
-      dateTotals[dateStr] = (dateTotals[dateStr] || 0) + total;
-    });
-    setMomentumByDate(dateTotals);
-  }, [sessions, sessionMomentumMap, normalizeDate]);
+    let active = true;
+    (async () => {
+      const { data } = await client.graphql({ query: listExercises, variables: { limit: 1000 } });
+      if (active) setExerciseMap(Object.fromEntries(asList(data?.listExercises).map(exercise => [exercise.exercise_id, exercise])));
+    })().catch(() => {});
+    return () => { active = false; };
+  }, [client, asList]);
 
   const renderSession = (session) => {
     const isOpen = expandedSessionId === session.session_id;
@@ -654,8 +239,8 @@ export default function SessionsDashboard({ route, navigation }) {
             ) : (
               details.map(item => <ExerciseHistory
                 key={`${session.session_id}-${item.session_item_index}`}
-                name={exerciseMap[item.exercise_id]?.name || item.exercise_id || 'Exercise'}
-                reps={item.reps || []} sets={item.sets || []} />)
+                name={exerciseMap[item.exercise_id]?.name || `Exercise ${item.session_item_index}`}
+                reps={item.reps || []} sets={item.sets || []} metadataError={item.setsError} />)
             )}
           </View>
         )}
@@ -666,16 +251,17 @@ export default function SessionsDashboard({ route, navigation }) {
   return (
     <View style={brandTheme.style(styles.safe)}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Session History</Text>
+        <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Session history</Text>
+        {fromClientList && <Text style={{ color: brandTheme.colors.muted, marginBottom: 12 }}>Reviewing {clientData?.Demographic?.name || 'client'}</Text>}
         <View style={brandTheme.style(styles.calendarCard)}>
           <View style={brandTheme.style(styles.calendarHeader)}>
-            <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+            <TouchableOpacity onPress={() => { setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)); setSelectedDate(null); }}>
               <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.calendarNav)]}>{'<'}</Text>
             </TouchableOpacity>
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.calendarTitle)]}>
               {monthDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </Text>
-            <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+            <TouchableOpacity onPress={() => { setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)); setSelectedDate(null); }}>
               <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.calendarNav)]}>{'>'}</Text>
             </TouchableOpacity>
           </View>
@@ -701,7 +287,6 @@ export default function SessionsDashboard({ route, navigation }) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const hasSession = sessionDates.has(dateStr);
                 const isSelected = selectedDate === dateStr;
-                const dayMomentum = momentumByDate[dateStr];
                 cells.push(
                   <TouchableOpacity
                     key={dateStr}
@@ -722,17 +307,14 @@ export default function SessionsDashboard({ route, navigation }) {
           </View>
         </View>
         <View style={brandTheme.style(styles.mapCard)}>
-          <Text style={[styles.mapTitle,{color:brandTheme.colors.text}]}>Muscle breakdown</Text>
-          <Text style={[styles.mapDate,{color:brandTheme.colors.muted,marginBottom:16}]}>{selectedDate || 'This month'}</Text>
-          <MuscleBreakdown segments={muscleMomentumList} />
+
+          <Text style={[styles.mapDate,{color:brandTheme.colors.muted,marginBottom:16}]}>{selectedDate || monthDate.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</Text>
+          <MovementSummary label={selectedDate ? "Day movement summary" : "Month movement summary"} reps={selectedReps} sessionCount={selectedSessions.length} loading={movement.loading} error={movementError} onRetry={movement.retry} />
         </View>
         {loading ? <ActivityIndicator size="large" /> : null}
         {error ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.error)]}>{error}</Text> : null}
         {!loading && !sessions.length ? <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No sessions recorded yet.</Text> : null}
-        {(selectedDate
-          ? sessions.filter((s) => normalizeDate(s.workout_date || s.created_at) === selectedDate)
-          : sessions
-        ).map(renderSession)}
+        {selectedSessions.map(renderSession)}
       </ScrollView>
     </View>
   );
@@ -740,12 +322,10 @@ export default function SessionsDashboard({ route, navigation }) {
 
 const formatDate = (value) => {
   if (!value) return 'Unknown date';
-  try {
-    const date = new Date(value);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-  } catch {
-    return value;
-  }
+  const dateOnly = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = new Date(dateOnly ? `${value}T12:00:00` : value);
+  if (!Number.isFinite(date.getTime())) return 'Unknown date';
+  return dateOnly ? date.toLocaleDateString() : `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
 };
 
 const baseStyles = StyleSheet.create({
@@ -1133,4 +713,3 @@ const baseStyles = StyleSheet.create({
     color: '#94a3b8',
   },
 });
-

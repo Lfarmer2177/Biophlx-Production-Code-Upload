@@ -1,0 +1,521 @@
+TAP version 13
+# Subtest: maintenance blocks all command/device operations and requires idle bands
+ok 1 - maintenance blocks all command/device operations and requires idle bands
+  ---
+  duration_ms: 5.8682
+  type: 'test'
+  ...
+# Subtest: firmware rejection is surfaced despite successful write and monitor is removed
+ok 2 - firmware rejection is surfaced despite successful write and monitor is removed
+  ---
+  duration_ms: 3.6546
+  type: 'test'
+  ...
+# Subtest: final success does not require an observable RUNNING status
+ok 3 - final success does not require an observable RUNNING status
+  ---
+  duration_ms: 0.9503
+  type: 'test'
+  ...
+# Subtest: ambiguous writes are never automatically retried
+ok 4 - ambiguous writes are never automatically retried
+  ---
+  duration_ms: 0.9188
+  type: 'test'
+  ...
+# Subtest: default and version-only activation fail closed
+ok 5 - default and version-only activation fail closed
+  ---
+  duration_ms: 3.7121
+  type: 'test'
+  ...
+# Subtest: unknown contract version, unconfirmed negotiation and absent capability are rejected
+ok 6 - unknown contract version, unconfirmed negotiation and absent capability are rejected
+  ---
+  duration_ms: 0.3864
+  type: 'test'
+  ...
+# Subtest: device mode cannot accept fixture negotiation evidence
+ok 7 - device mode cannot accept fixture negotiation evidence
+  ---
+  duration_ms: 0.1377
+  type: 'test'
+  ...
+# Subtest: explicit future handshake gate retains its evidence without claiming real hardware
+ok 8 - explicit future handshake gate retains its evidence without claiming real hardware
+  ---
+  duration_ms: 2.9316
+  type: 'test'
+  ...
+# Subtest: both bands retain identity and separate metrics with precise comparable means
+ok 9 - both bands retain identity and separate metrics with precise comparable means
+  ---
+  duration_ms: 0.7563
+  type: 'test'
+  ...
+# Subtest: unit conversion is explicit and raw values remain intact
+ok 10 - unit conversion is explicit and raw values remain intact
+  ---
+  duration_ms: 1.4613
+  type: 'test'
+  ...
+# Subtest: single-band capture remains available while combined metrics stay unavailable
+ok 11 - single-band capture remains available while combined metrics stay unavailable
+  ---
+  duration_ms: 1.1736
+  type: 'test'
+  ...
+# Subtest: missing duration does not invalidate range or turn into zero duration
+ok 12 - missing duration does not invalidate range or turn into zero duration
+  ---
+  duration_ms: 0.5427
+  type: 'test'
+  ...
+# Subtest: real zero remains a valid measured value
+ok 13 - real zero remains a valid measured value
+  ---
+  duration_ms: 0.5126
+  type: 'test'
+  ...
+# Subtest: arm and thigh observations stay separate even with equal units
+ok 14 - arm and thigh observations stay separate even with equal units
+  ---
+  duration_ms: 0.5573
+  type: 'test'
+  ...
+# Subtest: different metric definitions or phases are not averaged
+ok 15 - different metric definitions or phases are not averaged
+  ---
+  duration_ms: 0.4029
+  type: 'test'
+  ...
+# Subtest: identical retransmission is suppressed without incrementing captured records
+ok 16 - identical retransmission is suppressed without incrementing captured records
+  ---
+  duration_ms: 0.4181
+  type: 'test'
+  ...
+# Subtest: JSON property ordering does not turn an identical retry into a conflict
+ok 17 - JSON property ordering does not turn an identical retry into a conflict
+  ---
+  duration_ms: 0.3601
+  type: 'test'
+  ...
+# Subtest: changed immutable event payload is rejected and original is preserved
+ok 18 - changed immutable event payload is rejected and original is preserved
+  ---
+  duration_ms: 0.7843
+  type: 'test'
+  ...
+# Subtest: reused device sequence, finalized band rep and logical rep IDs are rejected
+ok 19 - reused device sequence, finalized band rep and logical rep IDs are rejected
+  ---
+  duration_ms: 0.5407
+  type: 'test'
+  ...
+# Subtest: bands cannot pair different logical rep IDs at the same numerical rep
+ok 20 - bands cannot pair different logical rep IDs at the same numerical rep
+  ---
+  duration_ms: 0.5352
+  type: 'test'
+  ...
+# Subtest: wrong set and repeated exercise occurrence do not contaminate the configured set
+ok 21 - wrong set and repeated exercise occurrence do not contaminate the configured set
+  ---
+  duration_ms: 0.5729
+  type: 'test'
+  ...
+# Subtest: unassigned device, stale run, wrong placement and wrong firmware build are rejected
+ok 22 - unassigned device, stale run, wrong placement and wrong firmware build are rejected
+  ---
+  duration_ms: 0.431
+  type: 'test'
+  ...
+# Subtest: out-of-order arrivals preserve original numbering, pairing and device clocks
+ok 23 - out-of-order arrivals preserve original numbering, pairing and device clocks
+  ---
+  duration_ms: 0.7609
+  type: 'test'
+  ...
+# Subtest: configuration and caller event mutations cannot rewrite captured provenance
+ok 24 - configuration and caller event mutations cannot rewrite captured provenance
+  ---
+  duration_ms: 0.6626
+  type: 'test'
+  ...
+# Subtest: non-final, malformed metrics, units, indices and non-JSON values are rejected
+ok 25 - non-final, malformed metrics, units, indices and non-JSON values are rejected
+  ---
+  duration_ms: 0.5277
+  type: 'test'
+  ...
+# Subtest: invalid receive time and unknown capture clock are not fabricated
+ok 26 - invalid receive time and unknown capture clock are not fabricated
+  ---
+  duration_ms: 0.2982
+  type: 'test'
+  ...
+# Subtest: set memory limit rejects another rep but permits a missing counterpart and duplicate
+ok 27 - set memory limit rejects another rep but permits a missing counterpart and duplicate
+  ---
+  duration_ms: 0.4127
+  type: 'test'
+  ...
+# Subtest: two sets both containing rep one have distinct canonical keys
+ok 28 - two sets both containing rep one have distinct canonical keys
+  ---
+  duration_ms: 0.4708
+  type: 'test'
+  ...
+# Subtest: duplicate slots, devices and placements are rejected before capture
+ok 29 - duplicate slots, devices and placements are rejected before capture
+  ---
+  duration_ms: 0.2119
+  type: 'test'
+  ...
+# Subtest: firmware completed-set counters map to distinct, one-based current sets
+ok 30 - firmware completed-set counters map to distinct, one-based current sets
+  ---
+  duration_ms: 2.3511
+  type: 'test'
+  ...
+# Subtest: three-second hold advances the set and clears only prior-rep measurements
+ok 31 - three-second hold advances the set and clears only prior-rep measurements
+  ---
+  duration_ms: 0.3306
+  type: 'test'
+  ...
+# Subtest: SET before the separate zero-REP notification does not manufacture a new rep
+ok 32 - SET before the separate zero-REP notification does not manufacture a new rep
+  ---
+  duration_ms: 0.2575
+  type: 'test'
+  ...
+# Subtest: repeated set and rep notifications preserve current measurements without duplicates
+ok 33 - repeated set and rep notifications preserve current measurements without duplicates
+  ---
+  duration_ms: 0.1672
+  type: 'test'
+  ...
+# Subtest: a new-set rep equal to the last-set count is captured when React skips the zero render
+ok 34 - a new-set rep equal to the last-set count is captured when React skips the zero render
+  ---
+  duration_ms: 0.2888
+  type: 'test'
+  ...
+# Subtest: a completed-set decrease starts fresh rep progress for the next exercise
+ok 35 - a completed-set decrease starts fresh rep progress for the next exercise
+  ---
+  duration_ms: 0.1817
+  type: 'test'
+  ...
+# Subtest: two independent band streams pair reps only within the same exercise, set, and rep
+ok 36 - two independent band streams pair reps only within the same exercise, set, and rep
+  ---
+  duration_ms: 0.453
+  type: 'test'
+  ...
+# Subtest: score tiers and unavailable values
+ok 37 - score tiers and unavailable values
+  ---
+  duration_ms: 1.2005
+  type: 'test'
+  ...
+# Subtest: sets sort reps, preserve zero and exclude missing scores
+ok 38 - sets sort reps, preserve zero and exclude missing scores
+  ---
+  duration_ms: 1.1953
+  type: 'test'
+  ...
+# Subtest: band snapshots round trip independently through AWSJSON
+ok 39 - band snapshots round trip independently through AWSJSON
+  ---
+  duration_ms: 0.5279
+  type: 'test'
+  ...
+# Subtest: valid zero is preserved and invalid measurements remain missing
+ok 40 - valid zero is preserved and invalid measurements remain missing
+  ---
+  duration_ms: 1.1888
+  type: 'test'
+  ...
+# Subtest: each metric has its own comparable rep count and exclusion count
+ok 41 - each metric has its own comparable rep count and exclusion count
+  ---
+  duration_ms: 1.0342
+  type: 'test'
+  ...
+# Subtest: mixed limbs, same side, and unknown placement never produce a two-band mean
+ok 42 - mixed limbs, same side, and unknown placement never produce a two-band mean
+  ---
+  duration_ms: 0.5033
+  type: 'test'
+  ...
+# Subtest: missing band and malformed legacy payload do not borrow combined values
+ok 43 - missing band and malformed legacy payload do not borrow combined values
+  ---
+  duration_ms: 0.3275
+  type: 'test'
+  ...
+# Subtest: summary weights each rep equally and separates sets by session and exercise
+ok 44 - summary weights each rep equally and separates sets by session and exercise
+  ---
+  duration_ms: 0.3015
+  type: 'test'
+  ...
+# Subtest: empty selected dates stay empty instead of falling back to another workout
+ok 45 - empty selected dates stay empty instead of falling back to another workout
+  ---
+  duration_ms: 1.6868
+  type: 'test'
+  ...
+# Subtest: date-only workout dates do not shift and timestamps follow local calendar dates
+ok 46 - date-only workout dates do not shift and timestamps follow local calendar dates
+  ---
+  duration_ms: 0.1963
+  type: 'test'
+  ...
+# Subtest: wire messages preserve two distinct checksums and little-endian status/version fields
+ok 47 - wire messages preserve two distinct checksums and little-endian status/version fields
+  ---
+  duration_ms: 3.6213
+  type: 'test'
+  ...
+# Subtest: preflight rejects malformed images and unsafe MTU, sequence, or changed packet boundaries
+ok 48 - preflight rejects malformed images and unsafe MTU, sequence, or changed packet boundaries
+  ---
+  duration_ms: 0.7151
+  type: 'test'
+  ...
+# Subtest: finishes when the device never emits a final ACK and confirms version after reboot
+ok 49 - finishes when the device never emits a final ACK and confirms version after reboot
+  ---
+  duration_ms: 38.9703
+  type: 'test'
+  ...
+# Subtest: recovers a missing packet using the cumulative window without duplicating image bytes
+ok 50 - recovers a missing packet using the cumulative window without duplicating image bytes
+  ---
+  duration_ms: 46.8406
+  type: 'test'
+  ...
+# Subtest: reconnect resumes the same live session and preserves payload/identity
+ok 51 - reconnect resumes the same live session and preserves payload/identity
+  ---
+  duration_ms: 47.8617
+  type: 'test'
+  ...
+# Subtest: a disconnect after MD5 does not restart an image that is already verifying
+ok 52 - a disconnect after MD5 does not restart an image that is already verifying
+  ---
+  duration_ms: 46.5095
+  type: 'test'
+  ...
+# Subtest: does not permit cancel after MD5 has been sent, even before verification status arrives
+ok 53 - does not permit cancel after MD5 has been sent, even before verification status arrives
+  ---
+  duration_ms: 46.7345
+  type: 'test'
+  ...
+# Subtest: cancel during transfer sends RESET, never sends final MD5, and cleans subscriptions
+ok 54 - cancel during transfer sends RESET, never sends final MD5, and cleans subscriptions
+  ---
+  duration_ms: 1.8427
+  type: 'test'
+  ...
+# Subtest: missing OTA service, image rejection and changed MTU fail without reporting Updated
+ok 55 - missing OTA service, image rejection and changed MTU fail without reporting Updated
+  ---
+  duration_ms: 3.4252
+  type: 'test'
+  ...
+# Subtest: same-version update is rejected before any START and wrong post-reboot version is not success
+ok 56 - same-version update is rejected before any START and wrong post-reboot version is not success
+  ---
+  duration_ms: 41.3919
+  type: 'test'
+  ...
+# Subtest: lost final packet is retransmitted after MD5 without treating sent bytes as success
+ok 57 - lost final packet is retransmitted after MD5 without treating sent bytes as success
+  ---
+  duration_ms: 62.4458
+  type: 'test'
+  ...
+# Subtest: a stalled receiver never opens the 32-packet window and cannot produce success
+ok 58 - a stalled receiver never opens the 32-packet window and cannot produce success
+  ---
+  duration_ms: 47.8434
+  type: 'test'
+  ...
+# Subtest: a valid transfer also works with smaller fixed negotiated packets
+ok 59 - a valid transfer also works with smaller fixed negotiated packets
+  ---
+  duration_ms: 46.2169
+  type: 'test'
+  ...
+# Subtest: valid gzip is inflated and both distinct MD5 values are checked against independent Node hashes
+ok 60 - valid gzip is inflated and both distinct MD5 values are checked against independent Node hashes
+  ---
+  duration_ms: 8.3513
+  type: 'test'
+  ...
+# Subtest: release checksum mismatch and malformed checksums are rejected before transport
+ok 61 - release checksum mismatch and malformed checksums are rejected before transport
+  ---
+  duration_ms: 2.2429
+  type: 'test'
+  ...
+# Subtest: corrupted gzip trailer and truncated gzip are rejected
+ok 62 - corrupted gzip trailer and truncated gzip are rejected
+  ---
+  duration_ms: 1.4444
+  type: 'test'
+  ...
+# Subtest: a small gzip that inflates beyond the application slot is stopped
+ok 63 - a small gzip that inflates beyond the application slot is stopped
+  ---
+  duration_ms: 19.861
+  type: 'test'
+  ...
+# Subtest: compressed file size and raw/non-gzip files are rejected
+ok 64 - compressed file size and raw/non-gzip files are rejected
+  ---
+  duration_ms: 0.7101
+  type: 'test'
+  ...
+# Subtest: unpadded and non-ESP32-shaped decompressed images are rejected
+ok 65 - unpadded and non-ESP32-shaped decompressed images are rejected
+  ---
+  duration_ms: 1.436
+  type: 'test'
+  ...
+# Subtest: target version must match verified hardware and advance installed firmware
+ok 66 - target version must match verified hardware and advance installed firmware
+  ---
+  duration_ms: 0.5225
+  type: 'test'
+  ...
+# Subtest: malformed and overflowing release versions are rejected
+ok 67 - malformed and overflowing release versions are rejected
+  ---
+  duration_ms: 0.2381
+  type: 'test'
+  ...
+# Subtest: existing ROM thresholds include valid zero and exact boundaries
+ok 68 - existing ROM thresholds include valid zero and exact boundaries
+  ---
+  duration_ms: 1.2985
+  type: 'test'
+  ...
+# Subtest: missing and invalid measurements never become a zero rating
+ok 69 - missing and invalid measurements never become a zero rating
+  ---
+  duration_ms: 0.1908
+  type: 'test'
+  ...
+# Subtest: two independent bands produce the backend integer score
+ok 70 - two independent bands produce the backend integer score
+  ---
+  duration_ms: 0.1848
+  type: 'test'
+  ...
+# Subtest: mutation preserves Float precision and serializes only schema fields
+ok 71 - mutation preserves Float precision and serializes only schema fields
+  ---
+  duration_ms: 0.6998
+  type: 'test'
+  ...
+# Subtest: null and invalid summary fields remain nullable
+ok 72 - null and invalid summary fields remain nullable
+  ---
+  duration_ms: 0.1321
+  type: 'test'
+  ...
+# Subtest: labels follow side and limb placement
+ok 73 - labels follow side and limb placement
+  ---
+  duration_ms: 0.1245
+  type: 'test'
+  ...
+# Subtest: both devices must finish firmware initialization
+ok 74 - both devices must finish firmware initialization
+  ---
+  duration_ms: 0.8757
+  type: 'test'
+  ...
+# Subtest: moving bands stay ready without waiting for another stationary interval
+ok 75 - moving bands stay ready without waiting for another stationary interval
+  ---
+  duration_ms: 0.1321
+  type: 'test'
+  ...
+# Subtest: missing, stopped and unknown firmware stages never imply readiness
+ok 76 - missing, stopped and unknown firmware stages never imply readiness
+  ---
+  duration_ms: 0.1262
+  type: 'test'
+  ...
+# [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+# Subtest: rep history follows every cursor, excludes foreign-session rows and deduplicates overlap
+ok 77 - rep history follows every cursor, excludes foreign-session rows and deduplicates overlap
+  ---
+  duration_ms: 1.2664
+  type: 'test'
+  ...
+# Subtest: failed or nonadvancing history does not report a successful zero count
+ok 78 - failed or nonadvancing history does not report a successful zero count
+  ---
+  duration_ms: 0.4568
+  type: 'test'
+  ...
+# Subtest: details include high item indexes and orphan reps without guessing an index ceiling
+ok 79 - details include high item indexes and orphan reps without guessing an index ceiling
+  ---
+  duration_ms: 0.3528
+  type: 'test'
+  ...
+# Subtest: unavailable set metadata remains an error while recorded reps remain visible
+ok 80 - unavailable set metadata remains an error while recorded reps remain visible
+  ---
+  duration_ms: 0.1848
+  type: 'test'
+  ...
+# Subtest: secondary receives STOP even if primary fails
+ok 81 - secondary receives STOP even if primary fails
+  ---
+  duration_ms: 1.2613
+  type: 'test'
+  ...
+# Subtest: only the surviving band is addressed after a disconnect
+ok 82 - only the surviving band is addressed after a disconnect
+  ---
+  duration_ms: 0.1516
+  type: 'test'
+  ...
+# Subtest: BIOPHLX actions and neutral text use different roles in both modes
+ok 83 - BIOPHLX actions and neutral text use different roles in both modes
+  ---
+  duration_ms: 1.6903
+  type: 'test'
+  ...
+# Subtest: text tokens meet WCAG AA normal-text contrast
+ok 84 - text tokens meet WCAG AA normal-text contrast
+  ---
+  duration_ms: 0.3756
+  type: 'test'
+  ...
+# Subtest: connection green and skin tones retain their meaning
+ok 85 - connection green and skin tones retain their meaning
+  ---
+  duration_ms: 0.2357
+  type: 'test'
+  ...
+1..85
+# tests 85
+# suites 0
+# pass 85
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 626.3678

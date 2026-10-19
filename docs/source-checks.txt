@@ -1,0 +1,11 @@
+App.js: JSX/import checks passed
+src/context/BleContext.js: JSX/import checks passed
+src/screens/FirmwareUpdateScreen.js: JSX/import checks passed
+src/screens/HomeScreen.js: JSX/import checks passed
+src/screens/WorkoutRunner.js: JSX/import checks passed
+src/screens/SessionsDashboard.js: JSX/import checks passed
+src/Components/rep-feedback/RepFeedbackCard.js: JSX/import checks passed
+src/Components/history/HistoryCards.js: JSX/import checks passed
+src/Components/history/MovementSummary.js: JSX/import checks passed
+src/Components/history/useSessionMovement.js: JSX/import checks passed
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
