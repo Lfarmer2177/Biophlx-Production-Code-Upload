@@ -4,6 +4,14 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { Alert, AppState, PermissionsAndroid, Platform } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import base64 from 'react-native-base64';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createOperationGate } from '../services/ble/operationGate';
+import { sendAcknowledgedCommand } from '../services/ble/commandResult';
+import { createOtaUpdater } from '../services/ota/updater';
+import { OTA_PILOT_ENABLED } from '../config/appVariant';
+const decodeBytes = value => Uint8Array.from(base64.decode(value || ''), c => c.charCodeAt(0));
+const OTA_START_UUID = 'eae2f5f4-b18f-4f4d-0003-100000000006';
+const emptyOta = {phase:'idle', progress:0, cancellable:false};
 import {
     BLE_CONSTANTS,
     BleUuids,
@@ -88,6 +96,12 @@ export function BleProvider({ children }) {
     const scanTimeoutRef = useRef(null);
     const monitorSubscriptionsRef = useRef({ primary: [], secondary: [] });
     const disconnectSubscriptionsRef = useRef({});
+    const gateRef = useRef(createOperationGate());
+    const settingsRef = useRef(deviceSettings);
+    settingsRef.current = deviceSettings;
+    const updaterRef = useRef(null);
+    const [firmwareInfo, setFirmwareInfo] = useState({primary:null, secondary:null});
+    const [otaState, setOtaState] = useState(emptyOta);
     const connectedDeviceRef = useRef(null);
     const secondaryDeviceRef = useRef(null);
 
@@ -160,7 +174,7 @@ export function BleProvider({ children }) {
             if (label === 'sets') return applyFirmwareSetCount(prev, value);
             const next = { ...prev };
             if (label === 'Velocity') {
-                const limb = deviceSettings?.[slot]?.limb ?? ExerciseLimb.undefined.value;
+                const limb = settingsRef.current?.[slot]?.limb ?? ExerciseLimb.undefined.value;
                 const degreesPerSecond = (Number(value) || 0) / 100;
                 next.Velocity = convertDegreesPerSecondToMetersPerSecond(degreesPerSecond, limb);
             }
@@ -168,15 +182,19 @@ export function BleProvider({ children }) {
             if (label === 'ROM') next.ROM = value;
             if (label === 'Current Position') next['Current Position'] = value;
             if (label === 'reps') next.reps = value;
-            if (label === 'exerciseStage') next.exerciseStage = value;
+            if (label === 'exerciseStage') {
+                next.exerciseStage = value;
+                const target = slot === 'primary' ? connectedDeviceRef.current : secondaryDeviceRef.current;
+                if (target) gateRef.current.setWorkout(target.id, value !== 0);
+            }
             if (label === 'ROM') next.Score = bandRating(value);
             return next;
         });
-    }, [deviceSettings]);
+    }, []);
 
     const readCurrentPosition = useCallback(async (dev = null, slot = 'primary') => {
         const device = dev || connectedDevice;
-        if (!device) return;
+        if (!device || gateRef.current.updating) return;
         try {
             const ch = await device.readCharacteristicForService(
                 SERVICE_UUIDS.deviceStatus,
@@ -184,7 +202,8 @@ export function BleProvider({ children }) {
             );
             const raw = base64.decode(ch.value || '');
             const buf = Uint8Array.from(raw.split('').map((c) => c.charCodeAt(0)));
-            const v = buf[0] ?? 0;
+            if (buf.length !== 2) return;
+            const v = new DataView(buf.buffer, buf.byteOffset, 2).getInt16(0, true);
             updateFeedbackForSlot(slot, 'Current Position', v);
         } catch (e) {
             console.warn('Read current position failed:', e?.message || e);
@@ -195,7 +214,7 @@ export function BleProvider({ children }) {
         const device =
             dev ||
             (slot === 'primary' ? connectedDeviceRef.current : secondaryDeviceRef.current);
-        if (!device) return null;
+        if (!device || gateRef.current.updating) return null;
 
         try {
             const ch = await device.readCharacteristicForService(
@@ -233,14 +252,17 @@ export function BleProvider({ children }) {
                         const raw = base64.decode(characteristic.value || '');
                         const buf = Uint8Array.from(raw.split('').map((c) => c.charCodeAt(0)));
                         let value = 0;
-                        if (fmt === 'UINT8') value = buf[0] ?? 0;
+                        const width = fmt === 'UINT32' ? 4 : (fmt === 'UINT8' ? 1 : 2);
+                        if (buf.length !== width) return;
+                        if (fmt === 'INT16') value = new DataView(buf.buffer, buf.byteOffset, 2).getInt16(0, true);
+                        if (fmt === 'UINT8') value = buf[0];
                         if (fmt === 'UINT16') value = (buf[0] ?? 0) + ((buf[1] ?? 0) << 8);
                         if (fmt === 'UINT32') {
                             value =
                                 (buf[0] ?? 0) +
                                 ((buf[1] ?? 0) << 8) +
                                 ((buf[2] ?? 0) << 16) +
-                                ((buf[3] ?? 0) << 24);
+                                ((buf[3] ?? 0) * 16777216);
                         }
                         updateFeedbackForSlot(slot, label, value);
                     },
@@ -249,10 +271,10 @@ export function BleProvider({ children }) {
                 monitorSubscriptionsRef.current[slot].push(subscription);
             };
 
-            watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.rom, 'ROM', 'UINT8');
+            watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.rom, 'ROM', 'INT16');
             watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.tut, 'TUT', 'UINT32');
             watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.velocity, 'Velocity', 'UINT16');
-            watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.currentPosition, 'Current Position', 'UINT8');
+            watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.currentPosition, 'Current Position', 'INT16');
             watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.reps, 'reps', 'UINT16');
             watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.sets, 'sets', 'UINT8');
             watch(SERVICE_UUIDS.deviceStatus, CHARACTERISTICS.exerciseStage, 'exerciseStage', 'UINT8');
@@ -262,8 +284,10 @@ export function BleProvider({ children }) {
 
     const disconnect = useCallback(
         async (slot = 'primary') => {
+            if (gateRef.current.updating) { Alert.alert('Update in progress', 'Wait for the band update to finish.'); return; }
             const target = slot === 'primary' ? connectedDevice : secondaryDevice;
             if (!target) return;
+            gateRef.current.setWorkout(target.id, false);
             try {
                 clearMonitorSubscriptions(slot);
                 disconnectSubscriptionsRef.current[slot]?.remove?.();
@@ -288,6 +312,7 @@ export function BleProvider({ children }) {
 
     const connectDevice = useCallback(
         async (device, slot = 'primary') => {
+            if (gateRef.current.updating) return;
             if (!device?.id) return;
             const primary = connectedDeviceRef.current;
             const secondary = secondaryDeviceRef.current;
@@ -308,6 +333,10 @@ export function BleProvider({ children }) {
                 const ready = await connected.discoverAllServicesAndCharacteristics();
                 disconnectSubscriptionsRef.current[slot]?.remove?.();
                 disconnectSubscriptionsRef.current[slot] = bleManager.onDeviceDisconnected(ready.id, () => {
+                    if (gateRef.current.updatingDeviceId === ready.id) return; // Only the updater-owned band may reboot silently.
+                    gateRef.current.setWorkout(ready.id, false);
+                    if (slot === 'primary') connectedDeviceRef.current = null;
+                    else secondaryDeviceRef.current = null;
                     console.log('Device disconnected');
                     clearMonitorSubscriptions(slot);
                     if (slot === 'primary') {
@@ -320,6 +349,9 @@ export function BleProvider({ children }) {
                         setSecondaryFeedback(initialFeedback);
                     }
                 });
+                if (slot === 'primary') connectedDeviceRef.current = ready;
+                else secondaryDeviceRef.current = ready;
+                await refreshFirmwareInfo(slot, ready);
                 if (slot === 'primary') {
                     setConnectedDevice(ready);
                     monitor(ready, 'primary');
@@ -351,39 +383,30 @@ export function BleProvider({ children }) {
         [connectDevice, deviceSlotToConnect]
     );
 
-    const flashDevice = useCallback(async (slot = 'primary') => {
-        const device = slot === 'primary' ? connectedDeviceRef.current : secondaryDeviceRef.current;
-        if (!device) {
-            Alert.alert('Not connected', 'Connect a device first.');
-            return;
-        }
-
-        const bytes = Array.from(createCommand(DeviceCommands.id));
-        const payload = base64.encode(String.fromCharCode(...bytes));
-        console.log('BLE flash command write', {
-            slot,
-            deviceId: device.id,
-            deviceName: device.name || null,
-            bytes,
-            base64: payload,
-        });
-
+    const writeWorkoutCommand = useCallback(async (device, bytes) => {
+        if (!device) throw new Error('Connect the band first.');
+        const release = gateRef.current.command(device.id);
+        const starts = bytes[0] === DeviceCommands.start;
+        if (starts) gateRef.current.setWorkout(device.id, true);
         try {
-            await device.writeCharacteristicWithResponseForService(
-                BleUuids.deviceCommandService,
-                BleUuids.command,
-                payload
-            );
-        } catch {
-            await device.writeCharacteristicWithoutResponseForService(
-                BleUuids.deviceCommandService,
-                BleUuids.command,
-                payload
-            );
-        }
+            await sendAcknowledgedCommand({device, service:BleUuids.deviceCommandService,
+                command:BleUuids.command, returnCode:BleUuids.returnCode,
+                payload:base64.encode(String.fromCharCode(...bytes)), decode:decodeBytes});
+            if (bytes[0] === DeviceCommands.stop) gateRef.current.setWorkout(device.id, false);
+        } finally { release(); }
     }, []);
 
+    const flashDevice = useCallback(async (slot = 'primary') => {
+        const device = slot === 'primary' ? connectedDeviceRef.current : secondaryDeviceRef.current;
+        try {
+            if (gateRef.current.workoutActive) throw new Error('Identify is available after the exercise ends.');
+            await writeWorkoutCommand(device, Array.from(createCommand(DeviceCommands.id)));
+        } catch (error) { Alert.alert('Band identification', error.message); }
+    }, [writeWorkoutCommand]);
+
     const updateDeviceSetting = useCallback((slot, key, value) => {
+        if (gateRef.current.updating) return;
+        settingsRef.current = {...settingsRef.current, [slot]:{...settingsRef.current[slot], [key]:value}};
         setDeviceSettings((prev) => ({
             ...prev,
             [slot]: {
@@ -395,6 +418,7 @@ export function BleProvider({ children }) {
 
     const scanAndConnect = useCallback(
         async (slot = 'primary') => {
+            if (gateRef.current.updating) { Alert.alert('Update in progress', 'Wait for the band update to finish.'); return; }
             setDeviceSlotToConnect(slot);
             await requestBlePermissions();
             if (bleState && bleState !== 'PoweredOn') {
@@ -445,6 +469,7 @@ export function BleProvider({ children }) {
     useEffect(() => {
         schedulePermissionRequest();
         const appStateSub = AppState.addEventListener('change', (state) => {
+            if (state !== 'active' && updaterRef.current) updaterRef.current.cancel();
             if (state === 'active') {
                 schedulePermissionRequest();
             }
@@ -482,7 +507,98 @@ export function BleProvider({ children }) {
         return () => clearInterval(interval);
     }, [readBatteryLevel]);
 
+    const refreshFirmwareInfo = async (slot, explicitDevice) => {
+        const device = explicitDevice || (slot === 'primary' ? connectedDeviceRef.current : secondaryDeviceRef.current);
+        if (!device) return null;
+        const info = {version:null, serial:null, hardware:null, supportsOta:false};
+        try {
+            const chars = await device.characteristicsForService(BleUuids.otaService);
+            info.supportsOta = chars.some(c => c.uuid.toLowerCase() === OTA_START_UUID && c.isWritableWithResponse);
+            const ch = await device.readCharacteristicForService(BleUuids.otaService, BleUuids.otaVersion);
+            const v = decodeBytes(ch.value);
+            if (v.length === 4) info.version = `${v[3]}.${v[2]}.${v[0] + v[1]*256}`;
+            for (const [key,uuid] of [['serial','2A25'],['hardware','2A27']]) {
+                try { const result = await device.readCharacteristicForService('180A',uuid); info[key] = base64.decode(result.value || '').replace(/\0/g,'').trim(); } catch {}
+            }
+        } catch (error) { info.error = error.message; }
+        setFirmwareInfo(prev => ({...prev,[slot]:info}));
+        return info;
+    };
+
+    const startFirmwareUpdate = async (slot, artifact) => {
+        if (!OTA_PILOT_ENABLED) throw new Error('OTA is restricted to internal pilot builds until release checks pass.');
+        if (AppState.currentState !== 'active') throw new Error('Keep the app in the foreground to start an update.');
+        const original = slot === 'primary' ? connectedDeviceRef.current : secondaryDeviceRef.current;
+        if (!original) throw new Error('Reconnect the selected band.');
+        const release = gateRef.current.beginMaintenance(original.id);
+        const attemptId = `${Date.now()}-${original.id}`;
+        let activeDevice = original;
+        let progress = {...emptyOta,phase:'checking',slot};
+        setOtaState(progress);
+        try {
+            stopScan();
+            for (const device of [connectedDeviceRef.current,secondaryDeviceRef.current].filter(Boolean)) {
+                const state = decodeBytes((await device.readCharacteristicForService(BleUuids.deviceStatusService,BleUuids.exerciseStage)).value);
+                if (state.length !== 1 || state[0] !== 0) throw new Error('End the exercise on both bands before updating.');
+            }
+            const info = await refreshFirmwareInfo(slot, original);
+            if (!info?.supportsOta) throw new Error('This band requires a USB/service update before OTA is available.');
+            if (!info.serial || !info.hardware || info.hardware !== artifact.hardware) throw new Error('The artifact does not match verified band identity.');
+            const battery = decodeBytes((await original.readCharacteristicForService(BleUuids.batteryService,BleUuids.batteryLevel)).value);
+            // Conservative pilot rule: USB state is not yet exposed reliably by the app.
+            if (battery.length !== 1 || battery[0] < 10) throw new Error('Charge the band to at least 10% before this pilot update.');
+            if (AppState.currentState !== 'active') throw new Error('The app left the foreground. Return to this screen before retrying.');
+            clearMonitorSubscriptions(slot);
+            const updater = createOtaUpdater({device:original,platform:Platform.OS,
+                onProgress: next => { progress = {...next,slot}; setOtaState(progress); },
+                reconnect: async ({deviceId,timeoutMs}) => {
+                    // A timed-out GATT operation can leave the native link connected.
+                    // Close that stale link before resuming the same device/session.
+                    if (await bleManager.isDeviceConnected(deviceId)) await bleManager.cancelDeviceConnection(deviceId);
+                    const device = await bleManager.connectToDevice(deviceId,{timeout:timeoutMs});
+                    activeDevice = await device.discoverAllServicesAndCharacteristics();
+                    const serial = base64.decode((await activeDevice.readCharacteristicForService('180A','2A25')).value || '').replace(/\0/g,'').trim();
+                    if (serial !== info.serial) throw new Error('Reconnected band identity does not match.');
+                    return activeDevice;
+                }});
+            updaterRef.current = updater;
+            const result = await updater.run(artifact);
+            activeDevice = result.device || activeDevice;
+            await refreshFirmwareInfo(slot, activeDevice);
+            await AsyncStorage.setItem('biophlx:last-ota-attempt',JSON.stringify({attemptId,slot,serial:info.serial,target:artifact.targetVersion,verifiedVersion:result.version,stage:'verified',at:new Date().toISOString()})).catch(()=>{});
+            return result;
+        } catch (error) {
+            setOtaState({...progress,phase:error.code === 'CANCELLED' ? 'cancelled' : 'failed',message:error.message,cancellable:false,slot});
+            await AsyncStorage.setItem('biophlx:last-ota-attempt',JSON.stringify({attemptId,slot,target:artifact.targetVersion,stage:'failed-or-unverified',error:error.message,at:new Date().toISOString()})).catch(()=>{});
+            // Firmware keeps FINALIZING active for two seconds after RESET/error.
+            // Keep workout controls locked while that cleanup finishes.
+            if (updaterRef.current) await new Promise(resolve => setTimeout(resolve, 2200));
+            throw error;
+        } finally {
+            activeDevice = updaterRef.current?.getDevice() || activeDevice;
+            updaterRef.current = null;
+            let live = false;
+            try { live = await activeDevice.isConnected(); } catch {}
+            const restored = live ? activeDevice : null;
+            if (slot === 'primary') { connectedDeviceRef.current = restored; setConnectedDevice(restored); }
+            else { secondaryDeviceRef.current = restored; setSecondaryDevice(restored); }
+            disconnectSubscriptionsRef.current[slot]?.remove?.();
+            disconnectSubscriptionsRef.current[slot] = restored ? bleManager.onDeviceDisconnected(restored.id, () => {
+                if (gateRef.current.updatingDeviceId === restored.id) return;
+                gateRef.current.setWorkout(restored.id, false);
+                clearMonitorSubscriptions(slot);
+                if (slot === 'primary') { connectedDeviceRef.current=null; setConnectedDevice(null); setFeedback(initialFeedback); }
+                else { secondaryDeviceRef.current=null; setSecondaryDevice(null); setSecondaryFeedback(initialFeedback); }
+                setBatteryLevels(prev => ({...prev,[slot]:null}));
+            }) : null;
+            release();
+            if (restored) { monitor(restored,slot); await readBatteryLevel(slot,restored); }
+        }
+    };
+    const cancelFirmwareUpdate = () => updaterRef.current?.cancel();
+
     const value = {
+        firmwareInfo, otaState, refreshFirmwareInfo, startFirmwareUpdate, cancelFirmwareUpdate, writeWorkoutCommand,
         bleState,
         connectedDevice,
         secondaryDevice,

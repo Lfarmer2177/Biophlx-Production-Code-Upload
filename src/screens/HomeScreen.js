@@ -1,3 +1,8 @@
+import ExerciseHistory from '../Components/history/HistoryCards';
+import MovementSummary from '../Components/history/MovementSummary';
+import useSessionMovement from '../Components/history/useSessionMovement';
+import { localWorkoutDate, selectMovementSessions } from '../Components/history/movementMetrics';
+import { loadSessionDetails } from '../Components/history/sessionHistoryData';
 import BrandButton from '../Components/Button/BrandButton';
 import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import { TutorialCard } from '../Components/band-setup/BandSetup';
@@ -21,7 +26,6 @@ import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 // import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import Body from '../Components/react-native-body-highlighter';
 import Colors from '../Theme/Colors';
 import DirectMessageBottomSheet from '../Components/BottomSheet/DirectMessageBottomSheet';
 import {
@@ -82,49 +86,8 @@ const actions = [
 
 const MAX_SESSION_ITEM_INDEX = 20;
 
-const formatDate = (value) => {
-  try {
-    const d = value ? new Date(value) : new Date();
-    return d.toISOString().split('T')[0];
-  } catch {
-    return '';
-  }
-};
-
-const normalizeDate = (value) => {
-  if (!value) return null;
-  try {
-    const d = new Date(value);
-    return d.toISOString().split('T')[0];
-  } catch {
-    return null;
-  }
-};
-
-const bodyParts = {
-  trapezius: { muscleName: 'Traps', side: 'Both' },
-  triceps: { muscleName: 'Triceps', side: 'Both' },
-  forearm: { muscleName: 'Forearm', side: 'Both' },
-  adductors: { muscleName: 'Adductors', side: 'Both' },
-  calves: { muscleName: 'Calves', side: 'Both' },
-  neck: { muscleName: 'Neck', side: 'Both' },
-  deltoids: { muscleName: 'Deltoids', side: 'Both' },
-  hands: { muscleName: 'Hands', side: 'Both' },
-  feet: { muscleName: 'Feet', side: 'Both' },
-  head: { muscleName: 'Head', side: 'Both' },
-  ankles: { muscleName: 'Ankles', side: 'Both' },
-  tibialis: { muscleName: 'Tibialis', side: 'Front' },
-  obliques: { muscleName: 'Abs', side: 'Front' },
-  chest: { muscleName: 'Chest', side: 'Front' },
-  biceps: { muscleName: 'Biceps', side: 'Front' },
-  abs: { muscleName: 'Abs', side: 'Front' },
-  quadriceps: { muscleName: 'Quads', side: 'Front' },
-  knees: { muscleName: 'Knees', side: 'Front' },
-  'upper-back': { muscleName: 'Upper Back', side: 'Back' },
-  'lower-back': { muscleName: 'Lower Back', side: 'Back' },
-  hamstring: { muscleName: 'Hamstrings', side: 'Back' },
-  gluteal: { muscleName: 'Glutes', side: 'Back' },
-};
+const formatDate = value => localWorkoutDate(value) || 'Unknown date';
+const normalizeDate = localWorkoutDate;
 
 const unwrapString = (value) => {
   if (value?.S) return value.S;
@@ -174,12 +137,7 @@ export default function HomeScreen({ route, navigation }) {
 
   const { fromClientList, clientData } = route?.params || {};
   const client = useMemo(() => generateClient({ authMode: 'userPool' }), []);
-  const [bodyData, setBodyData] = useState([]);
-  const [loadSelectedDate, setLoadSelectedDate] = useState(formatDate(new Date()));
-  const [totalMomentumData, setTotalMomentumData] = useState(0);
-  const [workoutDetail, setWorkOutDetail] = useState([]);
   const [exerciseMap, setExerciseMap] = useState({});
-  const [loadingBody, setLoadingBody] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState(null);
@@ -188,10 +146,6 @@ export default function HomeScreen({ route, navigation }) {
   const [sessionLoadingMap, setSessionLoadingMap] = useState({});
   const [monthDate, setMonthDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
-  const [sessionMomentumMap, setSessionMomentumMap] = useState({});
-  const [momentumByDate, setMomentumByDate] = useState({});
-  const fetchedMomentumRef = React.useRef(new Set());
-  const [muscleMomentumList, setMuscleMomentumList] = useState([]);
   const [range, setRange] = useState('month'); // 'week' | 'month' | 'year'
   const [trainerId, setTrainerId] = useState(null);
   const [userGender, setUserGender] = useState('male');
@@ -206,6 +160,8 @@ export default function HomeScreen({ route, navigation }) {
     deviceSlotToConnect,
     deviceSettings,
     batteryLevels,
+    firmwareInfo,
+    otaState,
     scanAndConnect,
     disconnect,
     flashDevice,
@@ -217,8 +173,6 @@ export default function HomeScreen({ route, navigation }) {
   const handleRangeChange = (opt) => {
     setRange(opt);
     setSelectedDate(null);
-    setLoadSelectedDate(formatDate(monthDate));
-    buildMonthlyMuscleData(sessions, null, opt);
   };
 
   const asList = useCallback((value) => {
@@ -242,30 +196,6 @@ export default function HomeScreen({ route, navigation }) {
     if (diff === -1) return 'Yesterday';
     if (Math.abs(diff) < 7) return date.toLocaleDateString(undefined, { weekday: 'long' });
     return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-  };
-
-  const getMuscleBoxColor = (percentage) => {
-    if (percentage > 60) {
-      return { backgroundColor: 'pink' };
-    }
-    if (percentage < 25) {
-      return { backgroundColor: 'lightgreen' };
-    }
-    return { backgroundColor: '#FCE883' };
-  };
-
-  const findGreatestAndLowest = (muscles, valueToCheck) => {
-    let greatest = { value: -Infinity, name: '' };
-    let lowest = { value: Infinity, name: '' };
-    Object.keys(muscles).forEach((key) => {
-      const total = parseFloat(muscles[key].total);
-      if (total > greatest.value) greatest = { value: total, name: muscles[key].muscleName };
-      if (total < lowest.value) lowest = { value: total, name: muscles[key].muscleName };
-    });
-    const value = parseFloat(valueToCheck);
-    if (value === greatest.value) return 'Greatest';
-    if (value === lowest.value) return 'Lowest';
-    return 'Middle';
   };
 
   const renderToggleGroup = (slot, key, options) => {
@@ -342,6 +272,8 @@ export default function HomeScreen({ route, navigation }) {
         </Pressable>
         {isOpen ? (
           <View style={brandTheme.style(styles.deviceDropdown)}>
+            <Text style={{color:brandTheme.colors.text}}>Firmware: {firmwareInfo?.[slot]?.version || 'Connect to check'}</Text>
+            <BrandButton title={otaState?.slot === slot ? 'View update status' : 'Firmware update'} disabled={!device || fromClientList} onPress={() => navigation.navigate('FirmwareUpdate', {slot})} />
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.deviceOptionLabel)]}>Side</Text>
             {renderToggleGroup(slot, 'side', [
               { label: 'Left', value: ExerciseSide.left.value },
@@ -359,86 +291,37 @@ export default function HomeScreen({ route, navigation }) {
   };
 
 
-  const fetchExercises = async () => {
-    if (Object.keys(exerciseMap).length) return exerciseMap;
-    try {
-      const { data } = await client.graphql({ query: listExercises, variables: { limit: 500 } });
-      const exItems = asList(data?.listExercises);
-      const map = {};
-      exItems.forEach((ex) => {
-        const norm = { ...ex };
-        norm.exercise_id = unwrapString(ex?.exercise_id);
-        norm.name = unwrapString(ex?.name);
-        norm.muscle_group = toArray(ex?.muscle_group).map(unwrapString);
-        const idKey = normalizeKey(norm?.exercise_id);
-        const nameKey = normalizeKey(norm?.name);
-        if (idKey) map[idKey] = norm;
-        if (nameKey) map[nameKey] = norm;
-      });
-      console.log('Exercise map keys', Object.keys(map));
-      setExerciseMap(map);
-      return map;
-    } catch (err) {
-      console.log('Fetch exercises failed', err);
-      return {};
-    }
-  };
-
-  const fetchExerciseDetail = async (exerciseId) => {
-    if (!exerciseId) return null;
-    try {
-      const { data } = await client.graphql({
-        query: getExerciseQuery,
-        variables: { exercise_id: exerciseId },
-      });
-      const ex = data?.getExercise || null;
-      if (!ex) return null;
-      const norm = {
-        ...ex,
-        exercise_id: unwrapString(ex.exercise_id),
-        name: unwrapString(ex.name),
-        muscle_group: toArray(ex.muscle_group).map(unwrapString),
-      };
-      setExerciseMap((prev) => {
-        const next = { ...prev };
-        const idKey = normalizeKey(norm.exercise_id);
-        const nameKey = normalizeKey(norm.name);
-        if (idKey) next[idKey] = norm;
-        if (nameKey) next[nameKey] = norm;
-        return next;
-      });
-      return norm;
-    } catch (err) {
-      console.log('Fetch exercise detail failed', exerciseId, err);
-      return null;
-    }
-  };
-
   const fetchSessions = useCallback(async () => {
     setSessionsLoading(true);
     setSessionsError(null);
     try {
       const current = await getCurrentUser();
       const activeUser = current?.userId || current?.username;
-      const custId = (fromClientList && clientData?.id) ? clientData.id : activeUser;
+      let custId = fromClientList && clientData?.id ? clientData.id : null;
+      if (!custId && activeUser) {
+        const { data, errors } = await client.graphql({ query: LIST_CUSTOMERS_BY_USER, variables: { user_id: activeUser } });
+        if (errors?.length || !Array.isArray(data?.listCustomers?.items)) throw new Error('Customer profile unavailable.');
+        custId = data?.listCustomers?.items?.[0]?.customer_id;
+      }
       if (!custId) {
         setSessions([]);
+        setSessionsError('No customer profile found.');
         setSessionsLoading(false);
         return;
       }
-      const { data } = await client.graphql({
+      const { data, errors } = await client.graphql({
         query: listSessionsByCustomerQuery,
         variables: { customer_id: custId, limit: 50 },
       });
+      if (errors?.length || !data?.listSessionsByCustomer) throw new Error('Session history unavailable.');
       const list = asList(data?.listSessionsByCustomer);
       list.sort((a, b) => new Date(b.workout_date || b.created_at) - new Date(a.workout_date || a.created_at));
       setSessions(list);
-      if (!selectedDate && list.length) {
+      if (list.length) {
         const recent = normalizeDate(list[0].workout_date || list[0].created_at);
         if (recent) {
           setSelectedDate(recent);
-          setMonthDate(new Date(recent));
-          setLoadSelectedDate(recent);
+          setMonthDate(new Date(`${recent}T12:00:00`));
 
         }
 
@@ -449,7 +332,7 @@ export default function HomeScreen({ route, navigation }) {
     } finally {
       setSessionsLoading(false);
     }
-  }, [client, asList, selectedDate, fromClientList, clientData]);
+  }, [client, asList, fromClientList, clientData?.id]);
 
   useEffect(() => {
     fetchSessions();
@@ -532,368 +415,34 @@ export default function HomeScreen({ route, navigation }) {
     return null;
   }, [client, trainerId, userRole]);
 
-  const buildMonthlyMuscleData = useCallback(async (sessionOverride = null, selectedOverride = null, rangeOverride = null) => {
-    setLoadingBody(true);
+  const movement = useSessionMovement(client, sessions);
+  const selectedSessions = selectMovementSessions(sessions, selectedDate, monthDate, range);
+  const selectedReps = selectedSessions.flatMap(session => movement.records[session.session_id] || []);
+  const movementError = selectedSessions.some(session => movement.errors[session.session_id]);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const map = {};
+      let nextToken;
+      do {
+        const { data } = await client.graphql({ query: listExercises, variables: { limit: 500, nextToken } });
+        asList(data?.listExercises).forEach(exercise => { map[normalizeKey(exercise.exercise_id)] = exercise; });
+        nextToken = data?.listExercises?.nextToken;
+      } while (nextToken && active);
+      if (active) setExerciseMap(map);
+    })().catch(() => {});
+    return () => { active = false; };
+  }, [client, asList]);
+
+  const ensureSessionDetails = useCallback(async sessionId => {
+    setSessionLoadingMap(previous => ({ ...previous, [sessionId]: true }));
     try {
-      const exMap = await fetchExercises();
-      const currentRange = rangeOverride || range;
-      const sessionList = sessionOverride || sessions;
-      const selected = selectedOverride !== null ? selectedOverride : selectedDate;
-
-      const anchorDateStr =
-        selected ||
-        (sessionList.length ? normalizeDate(sessionList[0].workout_date || sessionList[0].created_at) : null) ||
-        formatDate(new Date());
-      const anchor = new Date(anchorDateStr);
-      const start = new Date(anchor);
-      start.setHours(0, 0, 0, 0);
-      let end = new Date(anchor);
-      end.setHours(23, 59, 59, 999);
-      if (currentRange === 'week') {
-        start.setDate(start.getDate() - 6);
-      } else if (currentRange === 'month') {
-        start.setDate(1);
-        end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (currentRange === 'year') {
-        start.setMonth(0, 1);
-        end = new Date(anchor.getFullYear(), 11, 31, 23, 59, 59, 999);
-      }
-      let targetSessions =
-        selected && sessionList.length
-          ? sessionList.filter((s) => normalizeDate(s.workout_date || s.created_at) === selected)
-          : sessionList.filter((s) => {
-            const dateStr = normalizeDate(s.workout_date || s.created_at);
-            if (!dateStr) return false;
-            const d = new Date(dateStr);
-            return d >= start && d <= end;
-          });
-      if (!targetSessions.length && sessionList.length) {
-        const sorted = [...sessionList].sort(
-          (a, b) => new Date(b.workout_date || b.created_at) - new Date(a.workout_date || a.created_at)
-        );
-        targetSessions = [sorted[0]];
-        const recent = normalizeDate(sorted[0].workout_date || sorted[0].created_at);
-        if (recent) setSelectedDate(recent);
-      }
-      if (!targetSessions.length) {
-        targetSessions = sessionList;
-      }
-      if (!targetSessions.length) {
-        setBodyData([]);
-        setTotalMomentumData(0);
-        setMuscleMomentumList([]);
-        return;
-      }
-
-      const muscleTotals = {};
-      let totalMomentum = 0;
-
-      for (const sess of targetSessions) {
-        const { data: itemsData } = await client.graphql({
-          query: listSessionItemsBySession,
-          variables: { session_id: sess.session_id, limit: 100 },
-        });
-        const items = asList(itemsData?.listSessionItemsBySession);
-        const itemByIndex = {};
-        items.forEach((it) => {
-          if (!it?.session_item_index) return;
-          // Keep only items that belong to this session_id
-          if (it.session_id && it.session_id !== sess.session_id) return;
-          itemByIndex[it.session_item_index] = it;
-        });
-
-        const { data: repsData } = await client.graphql({
-          query: listSessionItemRepsQuery,
-          variables: { session_id: sess.session_id, limit: 1000 },
-        });
-        const reps = asList(repsData?.listSessionItemReps);
-
-        for (const rep of reps) {
-          if (rep?.session_id && rep.session_id !== sess.session_id) {
-            continue;
-          }
-          const idx = rep.session_item_index;
-          const parentItem = itemByIndex[idx];
-          if (!parentItem) {
-            console.log('No parent session item for rep', rep?.session_item_index, 'session', sess.session_id);
-            continue;
-          }
-          const exerciseId = normalizeKey(parentItem?.exercise_id || rep?.exercise_id);
-          console.log('Rep exerciseId', exerciseId, 'raw', parentItem?.exercise_id);
-          let ex = exerciseId ? exerciseMap[exerciseId] || exMap[exerciseId] : null;
-          if (!ex && exerciseId) {
-            ex = Object.values(exMap).find((val) => {
-              const exIdKey = normalizeKey(val?.exercise_id);
-              const exNameKey = normalizeKey(val?.name);
-              return (
-                exIdKey === exerciseId ||
-                exNameKey === exerciseId ||
-                (exIdKey && exerciseId && (exIdKey.includes(exerciseId) || exerciseId.includes(exIdKey))) ||
-                (exNameKey && exerciseId && (exNameKey.includes(exerciseId) || exerciseId.includes(exNameKey)))
-              );
-            });
-          }
-          if ((!ex || !Array.isArray(ex?.muscle_group) || !ex.muscle_group.length) && exerciseId) {
-            // Pull full exercise detail to get muscle_group when list query didn't include it
-            // eslint-disable-next-line no-await-in-loop
-            const fetched = await fetchExerciseDetail(parentItem.exercise_id);
-            if (fetched && (!ex || normalizeKey(fetched.exercise_id) === exerciseId)) {
-              ex = fetched;
-            }
-          }
-          if (!ex) {
-            console.log('No exercise match for', exerciseId, 'muscle_focus', parentItem?.muscle_focus);
-          } else {
-            console.log('Exercise match', { exerciseId, name: ex?.name, mg: ex?.muscle_group });
-            console.log(
-              'Exercise muscle_group raw string',
-              exerciseId,
-              ex?.muscle_group ? JSON.stringify(ex.muscle_group) : null
-            );
-          }
-          const mg = Array.isArray(ex?.muscle_group) ? ex.muscle_group : toArray(ex?.muscle_group);
-          let parsed = mg
-            .map((entry) => {
-              let str = null;
-              if (typeof entry === 'string') str = entry;
-              else if (entry && typeof entry === 'object') {
-                if (typeof entry.S === 'string') str = entry.S;
-                else if (typeof entry.value === 'string') str = entry.value;
-                else if (typeof entry.name === 'string') str = entry.name;
-                else {
-                  // Treat as a map of muscle -> weight
-                  return Object.entries(entry).map(([k, v]) => {
-                    let w = null;
-                    if (typeof v === 'number') w = v;
-                    else if (v && typeof v === 'object' && typeof v.N === 'string') w = parseFloat(v.N);
-                    else if (typeof v === 'string') w = parseFloat(v);
-                    return { name: k.trim(), weight: Number.isFinite(w) ? w : null };
-                  });
-                }
-              }
-              if (!str) return null;
-              const trimmed = str.trim();
-              if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-                try {
-                  const obj = JSON.parse(trimmed);
-                  return Object.keys(obj).map((k) => ({
-                    name: k.trim(),
-                    weight: Number(obj[k]),
-                  }));
-                } catch {
-                  // fall through
-                }
-              }
-              const colonIdx = trimmed.indexOf(':');
-              if (colonIdx !== -1) {
-                const name = trimmed.slice(0, colonIdx).trim();
-                const weightStr = trimmed.slice(colonIdx + 1).trim();
-                const weight = parseFloat(weightStr);
-                return { name, weight: Number.isFinite(weight) ? weight : null };
-              }
-              const numberMatch = trimmed.match(/^(.*?)(-?\d+(?:\.\d+)?)(?:%?)$/);
-              if (numberMatch) {
-                const name = numberMatch[1].trim();
-                const weight = parseFloat(numberMatch[2]);
-                return { name: name || trimmed, weight: Number.isFinite(weight) ? weight : null };
-              }
-              return { name: trimmed, weight: null };
-            })
-            .filter(Boolean)
-            .flat();
-          // If no weights, spread evenly
-          if (parsed.length && !parsed.some((p) => p.weight !== null)) {
-            const equalW = 1 / parsed.length;
-            parsed = parsed.map((p) => ({ ...p, weight: equalW }));
-          }
-          console.log('Parsed muscles for rep', { exerciseId, parsed });
-          let momentumVal = Number(rep?.momentum) || 0;
-          if ((!parsed.length || !parsed.some((p) => p.weight !== null)) && parentItem?.muscle_focus) {
-            parsed = [{ name: parentItem.muscle_focus, weight: 1 }];
-            console.log('Fallback muscle_focus used', parentItem?.muscle_focus);
-          }
-          const totalWeight = parsed.reduce((sum, p) => (p.weight !== null ? sum + p.weight : sum), 0);
-          if (momentumVal > 0 && totalWeight > 0) {
-            parsed.forEach((p) => {
-              if (p.weight === null) return;
-              const portion = (momentumVal * p.weight) / totalWeight;
-              muscleTotals[p.name] = (muscleTotals[p.name] || 0) + portion;
-            });
-            totalMomentum += momentumVal;
-          }
-        }
-      }
-
-      const muscleTotalsObj = {};
-      Object.keys(muscleTotals).forEach((key) => {
-        muscleTotalsObj[key] = { total: muscleTotals[key], muscleName: key };
-      });
-
-      const newBodyData = Object.keys(bodyParts)
-        .map((part) => {
-          const { muscleName, side } = bodyParts[part];
-          const muscleInfo = muscleTotalsObj[muscleName];
-          if (muscleInfo && muscleInfo.total > 0) {
-            const percentage = totalMomentum ? ((muscleInfo.total / totalMomentum) * 100).toFixed(0) : 0;
-            return {
-              slug: part.toLowerCase(),
-              intensity: percentage >= 60 ? 3 : percentage >= 30 ? 2 : 1,
-              total: muscleInfo.total,
-              name: muscleInfo.muscleName,
-              side,
-              percentage,
-            };
-          }
-          return null;
-        })
-        .filter(Boolean);
-
-      setBodyData(newBodyData);
-      setTotalMomentumData(Number(totalMomentum.toFixed(1)));
-      setWorkOutDetail(targetSessions);
-      setLoadSelectedDate(selected || start.toISOString().split('T')[0]);
-      const momentumList = Object.keys(muscleTotalsObj)
-        .map((key) => {
-          const total = muscleTotalsObj[key].total;
-          const percent = totalMomentum ? ((total / totalMomentum) * 100).toFixed(1) : '0';
-          return { name: key, total, percent };
-        })
-        .sort((a, b) => b.total - a.total);
-      console.log('Body map distribution', {
-        range: currentRange,
-        sessionCount: targetSessions.length,
-        totalMomentum,
-        muscles: momentumList,
-      });
-      momentumList.forEach((m) => {
-        console.log(`Muscle ${m.name} total momentum`, m.total);
-      });
-      setMuscleMomentumList(momentumList);
-    } catch (err) {
-      console.log('Monthly muscle build failed', err);
-      setBodyData([]);
-      setTotalMomentumData(0);
-      setMuscleMomentumList([]);
-    } finally {
-      setLoadingBody(false);
-    }
-  }, [asList, client, fetchExercises, monthDate, sessions]);
-
-  useEffect(() => {
-    buildMonthlyMuscleData(sessions, selectedDate, range);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthDate, sessions, selectedDate, range, exerciseMap]);
-
-  const fetchSessionMomentum = useCallback(
-    async (session_id) => {
-      if (!session_id) return 0;
-      try {
-        const { data } = await client.graphql({
-          query: listSessionItemRepsQuery,
-          variables: { session_id, limit: 500 },
-        });
-        const reps = asList(data?.listSessionItemReps);
-        return reps.reduce((sum, rep) => sum + (Number(rep?.momentum) || 0), 0);
-      } catch (err) {
-        console.log('Fetch session momentum failed', err);
-        return 0;
-      }
-    },
-    [asList, client]
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const computeMomentum = async () => {
-      if (!sessions.length) {
-        if (!cancelled) {
-          fetchedMomentumRef.current = new Set();
-          setSessionMomentumMap({});
-          setMomentumByDate({});
-        }
-        return;
-      }
-      const toFetch = sessions.filter(
-        (s) => s.session_id && !fetchedMomentumRef.current.has(s.session_id)
-      );
-      if (!toFetch.length) return;
-      const newMomentumBySession = {};
-      for (const s of toFetch) {
-        const total = await fetchSessionMomentum(s.session_id);
-        newMomentumBySession[s.session_id] = total;
-        fetchedMomentumRef.current.add(s.session_id);
-      }
-      if (cancelled) return;
-      if (Object.keys(newMomentumBySession).length) {
-        setSessionMomentumMap((prev) => ({ ...prev, ...newMomentumBySession }));
-      }
-    };
-    computeMomentum();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessions, fetchSessionMomentum]);
-
-  useEffect(() => {
-    const dateTotals = {};
-    sessions.forEach((s) => {
-      const dateStr = normalizeDate(s.workout_date || s.created_at);
-      if (!dateStr) return;
-      const total = sessionMomentumMap[s.session_id] || 0;
-      dateTotals[dateStr] = (dateTotals[dateStr] || 0) + total;
-    });
-    setMomentumByDate(dateTotals);
-  }, [sessions, sessionMomentumMap]);
-
-  const ensureSessionDetails = useCallback(
-    async (session_id) => {
-      if (!session_id) return;
-      setSessionLoadingMap((prev) => ({ ...prev, [session_id]: true }));
-      try {
-        const { data: itemData } = await client.graphql({
-          query: listSessionItemsBySession,
-          variables: { session_id, limit: 50 },
-        });
-        const items = asList(itemData?.listSessionItemsBySession);
-
-        const { data: repsData } = await client.graphql({
-          query: listSessionItemRepsQuery,
-          variables: { session_id, limit: 500 },
-        });
-        const reps = asList(repsData?.listSessionItemReps);
-
-        // Pull sets across indexes to show set details
-        const setsByIndex = {};
-        for (let idx = 1; idx <= MAX_SESSION_ITEM_INDEX; idx += 1) {
-          try {
-            const { data } = await client.graphql({
-              query: listSessionItemSetsQuery,
-              variables: { session_id, session_item_index: idx, limit: 50 },
-            });
-            const found = asList(data?.listSessionItemSets);
-            if (found.length) {
-              setsByIndex[idx] = found;
-            }
-          } catch (err) {
-            // ignore individual set fetch errors
-          }
-        }
-
-        const detailedItems = items.map((item) => {
-          const itemReps = reps.filter((r) => r?.session_item_index === item.session_item_index);
-          const totalMom = itemReps.reduce((sum, r) => sum + (Number(r?.momentum) || 0), 0);
-          const sets = setsByIndex[item.session_item_index] || [];
-          return { ...item, reps: itemReps, sets, totalMom };
-        });
-        setSessionDetailsMap((prev) => ({ ...prev, [session_id]: detailedItems }));
-      } catch (err) {
-        console.log('Fetch session details failed', err);
-      } finally {
-        setSessionLoadingMap((prev) => ({ ...prev, [session_id]: false }));
-      }
-    },
-    [asList, client]
-  );
+      const details = await loadSessionDetails(client, sessionId);
+      setSessionsError(null);
+      setSessionDetailsMap(previous => ({ ...previous, [sessionId]: details }));
+    } catch { setSessionsError('Session details could not be loaded. Close and reopen the session to retry.'); }
+    finally { setSessionLoadingMap(previous => ({ ...previous, [sessionId]: false })); }
+  }, [client]);
 
   const toggleSession = async (session_id) => {
     if (expandedSessionId === session_id) {
@@ -924,42 +473,10 @@ export default function HomeScreen({ route, navigation }) {
             ) : details.length === 0 ? (
               <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No session items recorded.</Text>
             ) : (
-              details.map((item) => {
-                return (
-                  <View key={`${session.session_id}-${item.session_item_index}`} style={brandTheme.style(styles.sessItem)}>
-                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessItemTitle)]}>
-                      Exercise {item.session_item_index}: {item.exercise_id || 'Unknown Exercise'}
-                    </Text>
-                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
-                      Muscle: {item.muscle_focus || 'N/A'} | Total Mom: {item.totalMom?.toFixed?.(1) || item.totalMom || 0}
-                    </Text>
-                    <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
-                      Sets: {item.sets?.length || 0} | Reps: {item.reps?.length || 0} | Workout: {item.workout_id || 'N/A'}
-                    </Text>
-                    {item.sets?.length ? (
-                      <View style={brandTheme.style(styles.sessSetList)}>
-                        {item.sets.map((s, idx) => (
-                          <Text key={idx} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
-                            Set {s.session_item_set_index ?? idx + 1}: Reps {s.reps_completed ?? 'N/A'} | Mom {s.momentum ?? 'N/A'}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    {item.reps?.length ? (
-                      <View style={brandTheme.style(styles.sessSetList)}>
-                        {item.reps.slice(0, 3).map((r, idx) => (
-                          <Text key={idx} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>
-                            Rep {r.session_item_rep_index ?? idx + 1}: Mom {r.momentum ?? 'N/A'}
-                          </Text>
-                        ))}
-                        {item.reps.length > 3 ? (
-                          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.sessMeta)]}>+{item.reps.length - 3} more reps</Text>
-                        ) : null}
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              })
+              details.map(item => <ExerciseHistory
+                key={`${session.session_id}-${item.session_item_index}`}
+                name={exerciseMap[normalizeKey(item.exercise_id)]?.name || `Exercise ${item.session_item_index}`}
+                reps={item.reps} sets={item.sets} metadataError={item.setsError} />)
             )}
           </View>
         )}
@@ -1067,12 +584,12 @@ export default function HomeScreen({ route, navigation }) {
         {!fromClientList &&
           <>
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.title)]}>Welcome back</Text>
-            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.subtitle)]}>Choose where to go</Text>
+            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.subtitle)]}>Connect your bands, record movement, and review your progress.</Text>
           </>
         }
 
         <View style={brandTheme.style(styles.bluetoothCard)}>
-          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.bluetoothTitle)]}>Bluetooth Sensors</Text>
+          <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.bluetoothTitle)]}>Your bands</Text>
           {renderSensorRow('Device 1', connectedDevice, 'primary')}
           {renderSensorRow('Device 2', secondaryDevice, 'secondary')}
         </View>
@@ -1114,96 +631,24 @@ export default function HomeScreen({ route, navigation }) {
         </View>
 
         <View style={brandTheme.style(styles.mapCard)}>
-          <View style={brandTheme.style(styles.rowMomentumHeading)}>
-            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.mapTitle)]}>Load Distribution</Text>
-            <View style={brandTheme.style(styles.mapHeaderRight)}>
-              {['week', 'month', 'year'].map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  onPress={() => handleRangeChange(opt)}
-                  style={brandTheme.style([
-                    styles.rangeChip,
-                    range === opt && styles.rangeChipActive,
-                  ])}
-                >
-                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.rangeChipText, range === opt && styles.rangeChipTextActive])]}>
-                    {opt === 'week' ? '1W' : opt === 'month' ? '1M' : '1Y'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+            {['week', 'month', 'year'].map(option => <Pressable key={option} onPress={() => handleRangeChange(option)} accessibilityRole="button" accessibilityState={{ selected: !selectedDate && range === option }} style={{ padding: 12, borderRadius: 12, backgroundColor: !selectedDate && range === option ? brandTheme.colors.raised : brandTheme.colors.surface }}><Text style={{ color: brandTheme.colors.text }}>{option}</Text></Pressable>)}
           </View>
-
-          <View style={brandTheme.style(styles.bodyHighlighterContainer)}>
-            <Body
-              data={bodyData}
-              gender={userGender === 'female' ? 'female' : 'male'}
-              side="front"
-              scale={0.7}
-              border="#dfdfdf"
-              colors={['red', 'orange', 'yellow']}
-            />
-            <Body
-              data={bodyData}
-              gender={userGender === 'female' ? 'female' : 'male'}
-              side="back"
-              scale={0.7}
-              border="#dfdfdf"
-              colors={['red', 'green', 'yellow']}
-            />
-          </View>
-
-          {bodyData.length ? (
-            <View style={brandTheme.style(styles.muscleList)}>
-              {bodyData.map((muscle, index) => (
-                <View
-                  key={index}
-                  style={brandTheme.style([styles.muscleChip, getMuscleBoxColor(muscle.percentage)])}
-                >
-                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muscleName)]}>{muscle.name}</Text>
-                  <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.musclePct)]}>{muscle.percentage}%</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.muted)]}>No muscle data for this date yet.</Text>
-          )}
-
-          {muscleMomentumList.length ? (
-            <View style={brandTheme.style(styles.momentumList)}>
-              {muscleMomentumList.map((m, idx) => (
-                <Text key={idx} style={[{color:brandTheme.colors.text}, brandTheme.style(styles.musclePct)]}>
-                  {m.name}: {m.percent}% ({m.total.toFixed(1)})
-                </Text>
-              ))}
-            </View>
-          ) : null}
-
-          {totalMomentumData ? (
-            <View style={brandTheme.style(styles.momentumRow)}>
-              <View style={brandTheme.style(styles.momentumItem)}>
-                <FontAwesome5 name="dumbbell" color={brandTheme.color("#000")} size={20} />
-                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumValue)]}>{totalMomentumData}</Text>
-                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumLabel)]}>Momentum</Text>
-              </View>
-              <View style={brandTheme.style(styles.momentumItem)}>
-                <FontAwesome5 name="trophy" color={brandTheme.color("#000")} size={20} />
-                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumValue)]}>{workoutDetail.length}</Text>
-                <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.momentumLabel)]}>Exercises</Text>
-              </View>
-            </View>
-          ) : null}
+          <Text style={{ color: brandTheme.colors.muted, marginBottom: 12 }}>{selectedDate || `Selected ${range}`}</Text>
+          <MovementSummary label="Your recorded movement" reps={selectedReps} sessionCount={selectedSessions.length}
+            loading={movement.loading} error={movementError} onRetry={movement.retry} />
+          <Pressable accessibilityRole="button" onPress={() => handleAction('sessions')} style={{ paddingVertical: 16 }}><Text style={{ color: brandTheme.colors.accent, fontWeight: '700' }}>Review sets and reps →</Text></Pressable>
         </View>
 
         <View style={brandTheme.style(styles.homeCalCard)}>
           <View style={brandTheme.style(styles.homeCalHeader)}>
-            <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+            <TouchableOpacity onPress={() => { setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)); setSelectedDate(null); }}>
               <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalNav)]}>{'<'}</Text>
             </TouchableOpacity>
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalTitle)]}>
               {monthDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </Text>
-            <TouchableOpacity onPress={() => setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+            <TouchableOpacity onPress={() => { setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)); setSelectedDate(null); }}>
               <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalNav)]}>{'>'}</Text>
             </TouchableOpacity>
           </View>
@@ -1229,7 +674,6 @@ export default function HomeScreen({ route, navigation }) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const hasSession = sessionDates.has(dateStr);
                 const isSelected = selectedDate === dateStr;
-                const dayMomentum = momentumByDate[dateStr];
                 cells.push(
                   <TouchableOpacity
                     key={dateStr}
@@ -1237,12 +681,10 @@ export default function HomeScreen({ route, navigation }) {
                       styles.homeCalCell,
                       isSelected && styles.homeCalCellSelected,
                     ])}
+                    accessibilityLabel={`Review movement on ${dateStr}`}
                     onPress={() => setSelectedDate(dateStr)}
                   >
                     <Text style={[{color:brandTheme.colors.text}, brandTheme.style([styles.homeCalCellText, isSelected && styles.homeCalCellTextSelected])]}>{day}</Text>
-                    {dayMomentum !== undefined ? (
-                      <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.homeCalMomentum)]}>{Math.round(dayMomentum)}</Text>
-                    ) : null}
                     {hasSession ? <View style={brandTheme.style(styles.homeCalDot)} /> : null}
                   </TouchableOpacity>
                 );
@@ -1850,6 +1292,5 @@ const baseStyles = StyleSheet.create({
     color: '#64748b',
   },
 });
-
 
 

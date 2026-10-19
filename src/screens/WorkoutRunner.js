@@ -1,3 +1,5 @@
+import { stopBands } from '../services/ble/stopBands';
+import { areBandsReady } from '../services/ble/runnerReadiness';
 import BrandButton from '../Components/Button/BrandButton';
 import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import { averageBands, bandLabel, bandRating, combinedRating, meanMetric, repMetricsInput, bandMetricsForReview } from '../Components/rep-feedback/repFeedback';
@@ -164,7 +166,6 @@ const velOptions = [
   { label: 'Intense', value: 0.5 },
 ];
 const LOAD_OPTIONS = [2.5, 5, 10, 25, 35, 45];
-const COUNTDOWN_SECONDS = 5;
 const SECONDARY_COMMAND_DELAY_MS = 500;
 
 const isIdleStage = (stage) => stage === ExerciseStage.idle.value;
@@ -451,6 +452,7 @@ export default function WorkoutRunner({ route, navigation }) {
     readCurrentPosition,
     deviceSettings,
     updateDeviceSetting,
+    writeWorkoutCommand,
   } = useBle();
   const [exerciseMap, setExerciseMap] = useState({});
   useEffect(() => {
@@ -520,12 +522,12 @@ export default function WorkoutRunner({ route, navigation }) {
   const areBothDevicesConnected = Boolean(connectedDevice && secondaryDevice);
   const isPrimaryStill = connectedDevice ? isIdleStage(feedback?.exerciseStage) : false;
   const isSecondaryStill = secondaryDevice ? isIdleStage(secondaryFeedback?.exerciseStage) : false;
-  const isUserStill = areBothDevicesConnected && isPrimaryStill && isSecondaryStill;
+  const isUserStill = areBothDevicesConnected && areBandsReady(feedback?.exerciseStage, secondaryFeedback?.exerciseStage);
   const countdownStatusLabel = !areBothDevicesConnected
     ? 'Waiting for both devices to connect'
     : isUserStill
-      ? 'Both devices stable'
-      : `Movement detected (${[
+      ? 'Both bands ready'
+      : `Waiting for firmware (${[
         !isPrimaryStill ? `Device 1: ${exerciseStageFromValue(feedback?.exerciseStage)}` : null,
         !isSecondaryStill ? `Device 2: ${exerciseStageFromValue(secondaryFeedback?.exerciseStage)}` : null,
       ]
@@ -592,7 +594,6 @@ export default function WorkoutRunner({ route, navigation }) {
   const [exerciseSelectionExpanded, setExerciseSelectionExpanded] = useState(true);
   const [trainingSettingsExpanded, setTrainingSettingsExpanded] = useState(true);
   const [workoutPhase, setWorkoutPhase] = useState('idle');
-  const [countdownSeconds, setCountdownSeconds] = useState(COUNTDOWN_SECONDS);
   const [profileWeight, setProfileWeight] = useState(null);
   const prevSecondaryRepsRef = useRef(secondaryFeedback.reps ?? 0);
 
@@ -645,31 +646,9 @@ export default function WorkoutRunner({ route, navigation }) {
   useEffect(() => {
     if ((!connectedDevice || !secondaryDevice) && workoutPhase !== 'idle') {
       setWorkoutPhase('idle');
-      setCountdownSeconds(COUNTDOWN_SECONDS);
+      Alert.alert('Exercise interrupted', 'A band disconnected. Use End Workout to stop any remaining connected band before reconnecting. Starting again creates a new capture run.');
     }
   }, [connectedDevice, secondaryDevice, workoutPhase]);
-
-  // Countdown timer logic
-  useEffect(() => {
-    if (workoutPhase !== 'countdown') return undefined;
-
-    if (!isUserStill) {
-      setCountdownSeconds(COUNTDOWN_SECONDS);
-      return undefined;
-    }
-
-    const timer = setTimeout(() => {
-      if (countdownSeconds <= 1) {
-        setCountdownSeconds(0);
-        setWorkoutPhase('active');
-        return;
-      }
-      setCountdownSeconds((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdownSeconds, isUserStill, workoutPhase]);
-
 
   const getCompletionPercent = useCallback(
     (entry) => {
@@ -736,6 +715,14 @@ export default function WorkoutRunner({ route, navigation }) {
       secondaryBytes: secondaryBytes.length ? secondaryBytes : null,
     });
 
+    if (isStopBroadcast) {
+      const targets = [[connectedDevice,'primary'],[secondaryDevice,'secondary']].filter(([device]) => device);
+      const failures = await stopBands(targets, (device,slot) => sendCommand(createCommand(DeviceCommands.stop),device,slot));
+      if (failures.length) throw new Error(`Stop not confirmed for ${failures.join(' and ')} band. Keep the bands still and retry End Workout.`);
+      setWorkoutPhase('idle');
+      return;
+    }
+
     if (connectedDevice && primaryCommand) {
       await sendCommand(primaryCommand, connectedDevice, 'primary');
     }
@@ -751,11 +738,9 @@ export default function WorkoutRunner({ route, navigation }) {
     }
 
     if (isStartBroadcast) {
-      setCountdownSeconds(COUNTDOWN_SECONDS);
-      setWorkoutPhase('countdown');
+      setWorkoutPhase('active');
     }
     if (isStopBroadcast) {
-      setCountdownSeconds(COUNTDOWN_SECONDS);
       setWorkoutPhase('idle');
     }
   };
@@ -784,6 +769,8 @@ export default function WorkoutRunner({ route, navigation }) {
         updateDeviceSetting(slot, 'limb', slots[index].limb);
         updateDeviceSetting(slot, 'side', slots[index].side);
       });
+      setWorkoutPhase('preparing');
+      setReadyModalVisible(false);
       await sendWorkoutCommandToConnectedDevices({
         primaryCommand: createCommand(DeviceCommands.start, {exerciseType: config.command[1], ...slots[0]}),
         secondaryCommand: createCommand(DeviceCommands.start, {exerciseType: (config.secondaryCommand || config.command)[1], ...slots[1]}),
@@ -792,6 +779,7 @@ export default function WorkoutRunner({ route, navigation }) {
     } catch (error) {
       await Promise.allSettled([connectedDevice, secondaryDevice].map(device => sendCommand(createCommand(DeviceCommands.stop), device)));
       setWorkoutPhase('idle');
+      setReadyModalVisible(true);
       setPlacementError('Could not start both bands. Check the connection and try again.');
     } finally {
       startingRef.current = false;
@@ -840,26 +828,7 @@ export default function WorkoutRunner({ route, navigation }) {
       }
     }
 
-    const payload = base64.encode(String.fromCharCode(...bytes));
-    console.log('BLE command write', {
-      deviceId: device.id,
-      deviceName: device.name || null,
-      bytes,
-      base64: payload,
-    });
-    try {
-      await device.writeCharacteristicWithResponseForService(
-        BleUuids.deviceCommandService,
-        BleUuids.command,
-        payload
-      );
-    } catch {
-      await device.writeCharacteristicWithoutResponseForService(
-        BleUuids.deviceCommandService,
-        BleUuids.command,
-        payload
-      );
-    }
+    await writeWorkoutCommand(device, bytes);
 
     if (targetSlot === 'primary') {
       readCurrentPosition();
@@ -1068,7 +1037,7 @@ export default function WorkoutRunner({ route, navigation }) {
   useEffect(() => {
     const { counter, previousReps: prevCount, repsToAdd } = readRepProgress(prevRepsRef.current, feedback);
     prevRepsRef.current = counter;
-    if (workoutPhase !== 'active') return;
+    if (!['active', 'preparing'].includes(workoutPhase)) return;
     if (repsToAdd > 0) {
       const latest = feedbackRef.current;
       const vel = +(+latest.Velocity || 0).toFixed(2);
@@ -1137,7 +1106,7 @@ export default function WorkoutRunner({ route, navigation }) {
     const { counter, repsToAdd } = readRepProgress(secondaryReviewCount.current, secondaryFeedback);
     const count = counter.reps;
     secondaryReviewCount.current = counter;
-    if (workoutPhase !== 'active') {
+    if (!['active', 'preparing'].includes(workoutPhase)) {
       secondaryRepSamples.current.clear();
       return;
     }
@@ -1180,7 +1149,7 @@ export default function WorkoutRunner({ route, navigation }) {
   // complete it and its paired rep readings are available. Retain snapshots so
   // delayed readings cannot be folded into the following set.
   useEffect(() => {
-    if (workoutPhase !== 'active') return;
+    if (!['active', 'preparing'].includes(workoutPhase)) return;
     const completedThrough = Math.min(completedSetCount(feedback.sets), completedSetCount(secondaryFeedback.sets));
     const groups = new Map();
     for (const snapshot of repSnapshots) {
@@ -1497,6 +1466,7 @@ export default function WorkoutRunner({ route, navigation }) {
     return (
       <View style={brandTheme.style(styles.listHeader)}>
         <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.header)]}>Perform Workout</Text>
+        <Text style={{color:brandTheme.colors.muted,fontSize:12,marginVertical:8}}>Firmware 1.3.11 uses separate notifications. Rep values are best-effort snapshots; speed uses an estimated limb radius. These readings do not measure muscle activation.</Text>
         {workoutPhase === 'active' && (
           <View accessibilityLiveRegion="polite" style={brandTheme.style(styles.planCard)}>
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.planTitle)]}>
@@ -1730,7 +1700,7 @@ export default function WorkoutRunner({ route, navigation }) {
         </View> */}
         </>
 
-        {connectedDevice && (
+        {(connectedDevice || secondaryDevice) && (
           <>
             {/* <TextInput
               style={styles.cmdInput}
@@ -1749,7 +1719,7 @@ export default function WorkoutRunner({ route, navigation }) {
                   sendWorkoutCommandToConnectedDevices({
                     primaryCommand: createCommand(DeviceCommands.stop),
                     secondaryCommand: createCommand(DeviceCommands.stop),
-                  })
+                  }).catch(error => Alert.alert('End exercise', error.message))
                 }
               />
             </View>
@@ -1785,6 +1755,7 @@ export default function WorkoutRunner({ route, navigation }) {
     return (
       <View style={brandTheme.style(styles.summaryCard)}>
         <Text style={[{color:brandTheme.colors.text}, brandTheme.style({ fontSize: 18, fontWeight: '700', marginBottom: 10 })]}>Perform Workout</Text>
+        <Text style={{color:brandTheme.colors.muted,fontSize:12,marginVertical:8}}>Firmware 1.3.11 uses separate notifications. Rep values are best-effort snapshots; speed uses an estimated limb radius. These readings do not measure muscle activation.</Text>
         <View style={brandTheme.style({ flexDirection: 'row', marginBottom: 6 })}>
           <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.th)]}>Workout</Text>
           <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.th)]}>Set #</Text>
@@ -1832,7 +1803,7 @@ export default function WorkoutRunner({ route, navigation }) {
         </View>
       </Modal>
 
-      <Modal visible={workoutPhase === 'countdown'} transparent animationType="fade">
+      <Modal visible={workoutPhase === 'preparing' || (workoutPhase === 'active' && !isUserStill)} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={brandTheme.style(styles.countdownOverlay)}>
           <View style={brandTheme.style(styles.countdownCard)}>
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.countdownTitle)]}>{countdownWorkoutLabel}</Text>
@@ -1842,7 +1813,7 @@ export default function WorkoutRunner({ route, navigation }) {
                 isUserStill ? styles.countdownTopTextIdle : styles.countdownTopTextWarn,
               ])]}
             >
-              {isUserStill ? 'Starting in' : 'Hold still...'}
+              {workoutPhase === 'preparing' ? 'Preparing both bands...' : 'Hold still...'}
             </Text>
             <View
               style={brandTheme.style([
@@ -1856,11 +1827,11 @@ export default function WorkoutRunner({ route, navigation }) {
                   isUserStill ? styles.countdownNumberIdle : styles.countdownNumberWarn,
                 ])]}
               >
-                {countdownSeconds}
+                {'…'}
               </Text>
             </View>
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.countdownHint)]}>
-              Hold still until the countdown reaches zero. Begin when your band buzzes.
+              The bands control readiness. Hold still until both bands are ready; there is no additional app countdown.
             </Text>
             <View style={brandTheme.style(styles.countdownStatusRow)}>
               <View
@@ -1877,6 +1848,7 @@ export default function WorkoutRunner({ route, navigation }) {
               >
                 {countdownStatusLabel}
               </Text>
+            <BrandButton title="End exercise" onPress={() => sendWorkoutCommandToConnectedDevices({primaryCommand:createCommand(DeviceCommands.stop),secondaryCommand:createCommand(DeviceCommands.stop)}).catch(error => Alert.alert('End exercise',error.message))} />
             </View>
           </View>
         </View>

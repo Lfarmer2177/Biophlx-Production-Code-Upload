@@ -1,0 +1,20 @@
+{
+  "variant": "proposed-app-current-firmware",
+  "branch": "codex/proposed-app-current-firmware",
+  "createdDate": "2026-10-19",
+  "appBase": "75d06cb25ccc8b27dd328bc34678871dc1ee4c0e",
+  "firmware": {
+    "repository": "Lfarmer2177/BiophlxFirmwareCode",
+    "branch": "main",
+    "head": "10cb763b8c58edbec43ad2bceb2cbbd8b5700d64",
+    "codeCommit": "b3fb0b35b6e149dec1aef027c0419c9c51e4460c",
+    "codeDate": "2026-10-11T01:02:23Z",
+    "guideDate": "2026-10-11T01:12:50Z",
+    "author": "arkhipenko"
+  },
+  "futureContract": null,
+  "nativeValidated": false,
+  "physicalDeviceValidated": false,
+  "awsDeployed": false,
+  "firmwareModified": false
+}
