@@ -1,3 +1,4 @@
+import { stopBands } from '../services/ble/stopBands';
 import BrandButton from '../Components/Button/BrandButton';
 import { useBIOPHLXTheme } from '../Theme/BIOPHLXTheme';
 import { averageBands, bandLabel, bandRating, combinedRating, meanMetric, repMetricsInput, bandMetricsForReview } from '../Components/rep-feedback/repFeedback';
@@ -451,6 +452,7 @@ export default function WorkoutRunner({ route, navigation }) {
     readCurrentPosition,
     deviceSettings,
     updateDeviceSetting,
+    writeWorkoutCommand,
   } = useBle();
   const [exerciseMap, setExerciseMap] = useState({});
   useEffect(() => {
@@ -645,6 +647,7 @@ export default function WorkoutRunner({ route, navigation }) {
   useEffect(() => {
     if ((!connectedDevice || !secondaryDevice) && workoutPhase !== 'idle') {
       setWorkoutPhase('idle');
+      Alert.alert('Exercise interrupted', 'A band disconnected. Use End Workout to stop any remaining connected band before reconnecting. Starting again creates a new capture run.');
       setCountdownSeconds(COUNTDOWN_SECONDS);
     }
   }, [connectedDevice, secondaryDevice, workoutPhase]);
@@ -735,6 +738,14 @@ export default function WorkoutRunner({ route, navigation }) {
       primaryBytes: primaryBytes.length ? primaryBytes : null,
       secondaryBytes: secondaryBytes.length ? secondaryBytes : null,
     });
+
+    if (isStopBroadcast) {
+      const targets = [[connectedDevice,'primary'],[secondaryDevice,'secondary']].filter(([device]) => device);
+      const failures = await stopBands(targets, (device,slot) => sendCommand(createCommand(DeviceCommands.stop),device,slot));
+      if (failures.length) throw new Error(`Stop not confirmed for ${failures.join(' and ')} band. Keep the bands still and retry End Workout.`);
+      setWorkoutPhase('idle');
+      return;
+    }
 
     if (connectedDevice && primaryCommand) {
       await sendCommand(primaryCommand, connectedDevice, 'primary');
@@ -840,26 +851,7 @@ export default function WorkoutRunner({ route, navigation }) {
       }
     }
 
-    const payload = base64.encode(String.fromCharCode(...bytes));
-    console.log('BLE command write', {
-      deviceId: device.id,
-      deviceName: device.name || null,
-      bytes,
-      base64: payload,
-    });
-    try {
-      await device.writeCharacteristicWithResponseForService(
-        BleUuids.deviceCommandService,
-        BleUuids.command,
-        payload
-      );
-    } catch {
-      await device.writeCharacteristicWithoutResponseForService(
-        BleUuids.deviceCommandService,
-        BleUuids.command,
-        payload
-      );
-    }
+    await writeWorkoutCommand(device, bytes);
 
     if (targetSlot === 'primary') {
       readCurrentPosition();
@@ -1730,7 +1722,7 @@ export default function WorkoutRunner({ route, navigation }) {
         </View> */}
         </>
 
-        {connectedDevice && (
+        {(connectedDevice || secondaryDevice) && (
           <>
             {/* <TextInput
               style={styles.cmdInput}
@@ -1749,7 +1741,7 @@ export default function WorkoutRunner({ route, navigation }) {
                   sendWorkoutCommandToConnectedDevices({
                     primaryCommand: createCommand(DeviceCommands.stop),
                     secondaryCommand: createCommand(DeviceCommands.stop),
-                  })
+                  }).catch(error => Alert.alert('End exercise', error.message))
                 }
               />
             </View>

@@ -206,6 +206,8 @@ export default function HomeScreen({ route, navigation }) {
     deviceSlotToConnect,
     deviceSettings,
     batteryLevels,
+    firmwareInfo,
+    otaState,
     scanAndConnect,
     disconnect,
     flashDevice,
@@ -342,6 +344,8 @@ export default function HomeScreen({ route, navigation }) {
         </Pressable>
         {isOpen ? (
           <View style={brandTheme.style(styles.deviceDropdown)}>
+            <Text style={{color:brandTheme.colors.text}}>Firmware: {firmwareInfo?.[slot]?.version || 'Connect to check'}</Text>
+            <BrandButton title={otaState?.slot === slot ? 'View update status' : 'Firmware update'} disabled={!device || fromClientList} onPress={() => navigation.navigate('FirmwareUpdate', {slot})} />
             <Text style={[{color:brandTheme.colors.text}, brandTheme.style(styles.deviceOptionLabel)]}>Side</Text>
             {renderToggleGroup(slot, 'side', [
               { label: 'Left', value: ExerciseSide.left.value },

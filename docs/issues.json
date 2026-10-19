@@ -1,0 +1,377 @@
+{
+  "variant": "current-app-ota",
+  "issues": [
+    {
+      "id": "SHARED-001",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P2",
+      "owner": "Integration maintainer",
+      "status": "resolved-evidence-only",
+      "title": "Pin the review baseline and distinguish the three variants",
+      "finding": "The retained October 17 review pins code b3fb0b35, head 10cb763b and current app 75d06cb. The third branch targets a future contract, not a newer firmware claim.",
+      "acceptanceCriteria": [
+        "Retain exact source SHAs and dates in branch documentation.",
+        "Do not describe the October 4 AWS export as a fresh live audit or 1.3.11 as finalized-rep capable."
+      ],
+      "evidence": [
+        "manifest",
+        "firmwareCodeCommit",
+        "appBaseline",
+        "otaReview"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": false,
+      "firmwareImplementationAuthorized": false,
+      "resolution": "Source/branch intent is documented locally; no device behavior is certified."
+    },
+    {
+      "id": "SHARED-002",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P0",
+      "owner": "Firmware maintainer + release security owner",
+      "status": "unresolved-protected-firmware",
+      "title": "Device-side image authenticity and OTA authorization",
+      "finding": "Reviewed 1.3.11 accepts unrestricted OTA GATT writes and caller-provided MD5; secure boot/signed-app verification are off. An app login and download hash do not authorize the device writer.",
+      "acceptanceCriteria": [
+        "Agree and independently implement device-side authenticity/authorization controls outside these app branches.",
+        "Demonstrate rejection of unauthorized, unsigned and wrong-target images under the agreed design."
+      ],
+      "evidence": [
+        "firmwareOta",
+        "firmwareBle",
+        "firmwareConfiguration",
+        "otaReview"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": true,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    },
+    {
+      "id": "SHARED-003",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P0",
+      "owner": "Firmware maintainer + device support owner",
+      "status": "unresolved-protected-firmware",
+      "title": "Post-activation health and recovery",
+      "finding": "The inactive slot protects a transfer but automatic boot rollback is disabled; a valid image that crashes can require USB recovery.",
+      "acceptanceCriteria": [
+        "Document and bench-test the actual post-activation recovery procedure.",
+        "If rollback is chosen, implement and validate boot health/rollback separately; determine bootloader/partition USB requirements.",
+        "Remove any blanket promise that every failed update leaves the device operational."
+      ],
+      "evidence": [
+        "firmwareConfiguration",
+        "firmwareOta",
+        "firmwareAdminGuide"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": true,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    },
+    {
+      "id": "SHARED-004",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P1",
+      "owner": "Release engineer + firmware maintainer",
+      "status": "unresolved-release-artifact",
+      "title": "Supply a reproducible, uniquely identified update artifact",
+      "finding": "No signed-off release artifact or source-to-binary bench evidence is supplied by these app scaffolds. Version reuse cannot identify an exact running build.",
+      "acceptanceCriteria": [
+        "Retain immutable padded application .gz, source/build identity, board/partition target, compressed/inflated sizes and both MD5 values.",
+        "Pin dependencies, build the intended target and verify its image; do not use factory ZIP, bootloader or partition files for BLE OTA.",
+        "Use a unique verified target version/build; do not infer an exact build from a reused version string."
+      ],
+      "evidence": [
+        "otaReview",
+        "manifest"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": true,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    },
+    {
+      "id": "SHARED-005",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P0",
+      "owner": "Mobile QA + hardware validation owner",
+      "status": "unresolved-hardware",
+      "title": "Run the physical iOS/Android OTA and workout acceptance matrix",
+      "finding": "Host fixtures and source review do not prove native Bluetooth timing, sensor behavior, power safety or installed firmware.",
+      "acceptanceCriteria": [
+        "Test each band slot on real iOS/Android through download, transfer, verification, reboot and rediscovery.",
+        "Exercise packet loss, duplicate/reordered ACKs, low battery/USB, background/lock/process death, Bluetooth loss, low/changed MTU and power loss at each stage.",
+        "Validate post-update start/readiness, two sets, mid-rep hold, STOP, disconnect, Mountain Climbers placement and sensor/battery recovery.",
+        "Retain artifact/device/app identifiers and actual results, including failures."
+      ],
+      "evidence": [
+        "otaReview",
+        "testResults"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": false,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    },
+    {
+      "id": "SHARED-006",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P1",
+      "owner": "Backend engineer + security owner",
+      "status": "unresolved-backend",
+      "title": "Add release/attempt services with authorization and truthful acknowledgements",
+      "finding": "The October 4 AWS snapshot has no OTA release/attempt model and identifies missing caller ownership checks and success-looking rep resolver responses.",
+      "acceptanceCriteria": [
+        "Re-read live AWS before designing migrations; reuse the existing stack and deployed band_metrics/tut/velocity fields.",
+        "Implement authorized immutable release distribution and idempotent attempt state in staging if cloud distribution is selected.",
+        "Return confirmed stored values and errors; test cross-user denial, identical retry, conflict and partial-to-complete merge.",
+        "Make installed-version observation distinct from transfer completion."
+      ],
+      "evidence": [
+        "awsReview",
+        "awsSchema",
+        "backendDesign"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": false,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    },
+    {
+      "id": "SHARED-007",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P1",
+      "owner": "Mobile engineer",
+      "status": "implemented-pending-native-validation",
+      "title": "Validate foreground lifecycle, navigation and shared BLE exclusion",
+      "finding": "The shared operation gate, acknowledged workout-command writes, and foreground/lifecycle protections are implemented. Native navigation, background/reconnect timing and cross-screen exclusion still require device validation.",
+      "acceptanceCriteria": [
+        "All app workout/Identify/update commands and connection actions respect one shared update lock.",
+        "Keep pending workout data before OTA; prevent starting during capture.",
+        "Validate navigation/screen lock/background behavior in native builds and show interrupted/unknown outcomes honestly.",
+        "Check completion only after selected-device rediscovery and target identity verification."
+      ],
+      "evidence": [
+        "bleContext",
+        "commandResult",
+        "otaUpdater",
+        "otaScreen",
+        "testResults"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": false,
+      "firmwareImplementationAuthorized": false,
+      "resolution": "App protections implemented; full acceptance remains open until native/hardware evidence is recorded.",
+      "implementedScope": [
+        "Shared BLE operation gate excludes OTA and workout/Identify operations and guards connection actions.",
+        "Workout writes wait for firmware return-code acknowledgement instead of treating a GATT write as success.",
+        "Foreground/lifecycle and updater-owned reconnect handling are implemented."
+      ],
+      "openAcceptance": [
+        "Run real iOS/Android navigation, screen lock/background, connection loss and simultaneous-action tests.",
+        "Verify retained workout data, unknown-outcome recovery and selected-device rediscovery across app interruption."
+      ]
+    },
+    {
+      "id": "SHARED-008",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P1",
+      "owner": "Device support owner + firmware maintainer",
+      "status": "unresolved-service-process",
+      "title": "Bootstrap older bands through an approved service process",
+      "finding": "1.3.11 is the first reviewed firmware with image transfer; read-only OTA version service on 1.3.9 does not provide the initial update path.",
+      "acceptanceCriteria": [
+        "Detect presence of the required OTA characteristics, not a version string alone.",
+        "Show service-update-required for older or unsupported devices.",
+        "Document and test USB bootstrap on the intended hardware outside these app branches; do not execute it as part of this work."
+      ],
+      "evidence": [
+        "otaReview",
+        "manifest"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": true,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    },
+    {
+      "id": "B1-001",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P1",
+      "owner": "Mobile transport engineer",
+      "status": "implemented-pending-native-validation",
+      "title": "Integrate and verify the 1.3.11 OTA state machine",
+      "finding": "The 1.3.11 OTA transport is implemented and its 13 mocked protocol tests pass. This is host state-machine evidence; native timing, hardware recovery and customer release acceptance remain open.",
+      "acceptanceCriteria": [
+        "Encode the exact 22-byte little-endian START; distinguish status constants from ACK values.",
+        "Use fixed payload P, window 32, bounded sequence, distinct compressed/image MD5s, and recovery without waiting for an unspecified final ACK.",
+        "Retain selected-device identity; cancellation stops being offered before finalization; resolve reconnect state before a new START.",
+        "Run protocol unit tests and native integration tests without adding firmware changes."
+      ],
+      "evidence": [
+        "otaProtocol",
+        "otaUpdater",
+        "otaTests",
+        "testResults",
+        "firmwareOta",
+        "firmwareBle"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": false,
+      "firmwareImplementationAuthorized": false,
+      "resolution": "Implemented with 13/13 mocked tests passing. The issue remains open for native/hardware acceptance.",
+      "implementedScope": [
+        "Exact 22-byte START, status-before-ACK parsing, fixed-payload/window flow control and bounded sequence guards.",
+        "Distinct compressed/image MD5s, retransmission/reconnect logic and no requirement for a final ACK.",
+        "Finalization cancellation barrier, selected-device target-version verification and scoped monitor cleanup."
+      ],
+      "openAcceptance": [
+        "Run the transport in actual iOS/Android builds with a validated release artifact and both band slots.",
+        "Complete physical loss/background/power/recovery acceptance; do not infer signed-image support or rollback from passing mocks."
+      ],
+      "testEvidence": {
+        "suite": "tests/ota.test.cjs",
+        "passed": 13,
+        "failed": 0,
+        "kind": "mocked host protocol tests",
+        "hardware": false
+      }
+    },
+    {
+      "id": "B1-002",
+      "branches": [
+        "current-app-ota",
+        "proposed-app-current-firmware",
+        "proposed-app-new-firmware"
+      ],
+      "priority": "P1",
+      "owner": "Mobile UI engineer",
+      "status": "implemented-pending-native-validation",
+      "title": "Validate the implemented gated band firmware screen",
+      "finding": "The band firmware route/UI, default-off pilot gate, local file validator, device identity checks and battery preflight are implemented. Native end-to-end operation and release-service acceptance remain open.",
+      "acceptanceCriteria": [
+        "Show selected band, source/target version, eligible artifact and charge status.",
+        "Separate transfer, verification, restart, verified completion, retry and service-required states.",
+        "Default the pilot off; do not advertise customer readiness merely because a source branch exists.",
+        "Leave other current app behavior visible and document retained issues."
+      ],
+      "evidence": [
+        "navigation",
+        "otaScreen",
+        "variantGate",
+        "otaArtifact",
+        "otaArtifactTests",
+        "bleContext",
+        "testResults"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": false,
+      "firmwareImplementationAuthorized": false,
+      "resolution": "App route, guarded UI and preflight implementation are present; 8/8 artifact helper tests pass. Native/hardware acceptance is not complete.",
+      "implementedScope": [
+        "Band firmware route and updater UI with explicit transfer/verification/restart/outcome states.",
+        "OTA pilot defaults off; selecting or starting an update remains gated.",
+        "Local artifact validation and device identity/capability/battery checks before transfer."
+      ],
+      "openAcceptance": [
+        "Validate the file-picker, permissions, screen/lifecycle behavior and target identity handling on actual iOS/Android builds.",
+        "Provide an approved release artifact and production distribution/eligibility policy; the local pilot UI does not establish a release catalog.",
+        "Keep device-side authenticity, rollback and physical verification open under the shared firmware issues."
+      ],
+      "testEvidence": {
+        "suite": "tests/otaArtifact.test.cjs",
+        "passed": 8,
+        "failed": 0,
+        "kind": "host artifact tests using application dependencies with independent Node hashes",
+        "hardware": false
+      }
+    },
+    {
+      "id": "B1-003",
+      "branches": [
+        "current-app-ota"
+      ],
+      "priority": "P1",
+      "owner": "Workout engineer + firmware maintainer",
+      "status": "unresolved-existing-workout",
+      "title": "Retain and document current measurement and set-boundary limits",
+      "finding": "OTA integration does not fix 1.3.11's rep-edge/final-TUT ordering or all partial-rep reset state. Those remain measurement dependencies.",
+      "acceptanceCriteria": [
+        "Do not label cached legacy rep-edge values as immutable finalized measurements.",
+        "Document existing best-effort capture limits in this minimal branch.",
+        "Keep the firmware recommendations separate and verify regression of existing set/rep behavior after OTA."
+      ],
+      "evidence": [
+        "otaReview",
+        "backendGate",
+        "firmwareExercise",
+        "firmwareButtons"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": true,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    },
+    {
+      "id": "B1-004",
+      "branches": [
+        "current-app-ota"
+      ],
+      "priority": "P2",
+      "owner": "Mobile engineer + QA",
+      "status": "unresolved-integration",
+      "title": "Pin native dependencies and retain build evidence",
+      "finding": "Host helper tests do not establish that the native app builds or runs the updater with the installed BLE library.",
+      "acceptanceCriteria": [
+        "Pin the tested dependency lockfile without replacing integration identifiers.",
+        "Record successful native builds and permission handling for supported Android/iOS versions.",
+        "Retain current-app regression evidence and publish no production build from this task."
+      ],
+      "evidence": [
+        "otaReview"
+      ],
+      "firmwareProtected": true,
+      "firmwareDependency": false,
+      "firmwareImplementationAuthorized": false,
+      "resolution": null
+    }
+  ]
+}

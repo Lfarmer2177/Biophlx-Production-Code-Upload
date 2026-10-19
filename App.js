@@ -42,6 +42,7 @@ import ProfileSetup from './src/screens/ProfileSetup';
 import WorkoutBuilder from './src/screens/WorkoutBuilder';
 import WorkoutRunner from './src/screens/WorkoutRunner';
 import HomeScreen from './src/screens/HomeScreen';
+import FirmwareUpdateScreen from './src/screens/FirmwareUpdateScreen';
 import ExerciseLibrary from './src/screens/ExerciseLibrary';
 import CreateWorkout from './src/screens/CreateWorkout';
 import WorkoutLibrary from './src/screens/WorkoutLibrary';
@@ -72,6 +73,7 @@ export default function App() {
             <Stack.Screen name="Auth" component={AuthGate} options={{ title: 'Sign In' }} />
             <Stack.Screen name="ProfileSetup" component={ProfileSetup} options={{ title: 'Complete Profile' }} />
             <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />
+            <Stack.Screen name="FirmwareUpdate" component={FirmwareUpdateScreen} options={{ title: 'Band firmware' }} />
             <Stack.Screen name="WorkoutBuilder" component={WorkoutBuilder} options={{ title: 'Build Workout' }} />
             <Stack.Screen name="CreateWorkout" component={CreateWorkout} options={{ title: 'Create Workout' }} />
             <Stack.Screen name="WorkoutLibrary" component={WorkoutLibrary} options={{ title: 'My Workouts' }} />
