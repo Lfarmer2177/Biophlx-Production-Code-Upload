@@ -11,11 +11,27 @@
     "preview": {
       "distribution": "internal"
     },
+    "testflight": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "env": {
+        "BIOPHLX_TESTFLIGHT_VARIANT": "current-app-ota",
+        "EXPO_PUBLIC_ENABLE_OTA_PILOT": "false"
+      }
+    },
     "production": {
       "autoIncrement": true
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "testflight": {
+      "ios": {
+        "appleTeamId": "5F7CG99WV8",
+        "appName": "BIOPHLX OTA Pilot",
+        "sku": "BIOPHLX-CURRENTOTA-TEST",
+        "language": "en-US"
+      }
+    }
   }
 }
