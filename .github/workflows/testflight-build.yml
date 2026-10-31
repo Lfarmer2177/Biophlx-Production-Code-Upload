@@ -1,0 +1,71 @@
+name: BIOPHLX iOS TestFlight build
+
+on:
+  push:
+    branches:
+      - codex/current-app-ota
+      - codex/proposed-app-current-firmware
+      - codex/proposed-app-new-firmware
+
+permissions:
+  contents: read
+
+jobs:
+  build_ios:
+    if: ${{ startsWith(github.event.head_commit.message, 'Release TestFlight:') }}
+    environment: testflight-signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      EXPO_APPLE_TEAM_ID: 5F7CG99WV8
+      EXPO_APPLE_TEAM_TYPE: ${{ vars.APPLE_TEAM_TYPE }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: yarn
+      - name: Check branch and required secrets
+        shell: bash
+        run: |
+          case "$GITHUB_REF_NAME" in
+            codex/current-app-ota|codex/proposed-app-current-firmware|codex/proposed-app-new-firmware) ;;
+            *) echo 'Select one of the three BIOPHLX TestFlight branches.' >&2; exit 1 ;;
+          esac
+          for name in EXPO_TOKEN EXPO_ASC_KEY_ID EXPO_ASC_ISSUER_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required GitHub Actions secret: $name" >&2
+              exit 1
+            fi
+          done
+          case "$EXPO_APPLE_TEAM_TYPE" in
+            COMPANY_OR_ORGANIZATION|INDIVIDUAL) ;;
+            *) echo 'Set repository variable APPLE_TEAM_TYPE to COMPANY_OR_ORGANIZATION or INDIVIDUAL.' >&2; exit 1 ;;
+          esac
+      - name: Prepare Apple API key privately
+        shell: bash
+        env:
+          APPLE_ASC_TEAM_KEY_P8: ${{ secrets.APPLE_ASC_TEAM_KEY_P8 }}
+        run: |
+          if [[ -z "$APPLE_ASC_TEAM_KEY_P8" ]]; then
+            echo 'Missing required GitHub Actions secret: APPLE_ASC_TEAM_KEY_P8' >&2
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$APPLE_ASC_TEAM_KEY_P8" > "$RUNNER_TEMP/biophlx-asc-key.p8"
+          echo "EXPO_ASC_API_KEY_PATH=$RUNNER_TEMP/biophlx-asc-key.p8" >> "$GITHUB_ENV"
+      - name: Install and validate
+        run: |
+          yarn install --frozen-lockfile --non-interactive
+          npm test
+          npm run test:source
+          npx expo install --check
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Start signed iOS build
+        run: eas build --platform ios --profile testflight --non-interactive --no-wait
