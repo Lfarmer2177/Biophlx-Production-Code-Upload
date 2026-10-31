@@ -1,8 +1,10 @@
 # BIOPHLX validation — proposed-app-new-firmware
 
+2026-10-31: **88/88 host tests passed**, including three TestFlight identity tests. Source checks and offline Expo/EAS configuration validation passed for the store-distribution profile. No native iOS build, signing, upload or phone installation was tested.
+
 2026-10-19: **85/85 automated tests passed**. JSX compilation and local import checks passed for the integrated screens/components.
 
-- [Full automated output](tests.tap); [source checks](source-checks.txt).
+- [2026-10-19 automated output](tests.tap); [source checks](source-checks.txt). The 2026-10-31 rerun was verified in this workspace; the prior log is retained for reference.
 - Tests cover simulated BLE transport, gzip integrity/size validation, operation exclusion, command rejection, independent STOP attempts, set/rep identity, existing rating/schema rules and theme contrast. Proposed variants additionally cover movement means, history pagination and readiness. Future variant adds 25 synthetic finalized-rep contract cases.
 - Node host tests used the existing checkout's dependency installation plus the exact official pako 2.1.0 inflate build. New runtime dependencies are declared in package.json. No dependency lock/build success is implied.
 - Native dependency install/build: **not completed**; registry access was unavailable from this workspace. The inherited yarn.lock must be regenerated consistently before CI/native builds.

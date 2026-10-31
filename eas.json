@@ -13,9 +13,25 @@
     },
     "production": {
       "autoIncrement": true
+    },
+    "testflight": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "env": {
+        "BIOPHLX_TESTFLIGHT_VARIANT": "proposed-app-new-firmware",
+        "EXPO_PUBLIC_ENABLE_OTA_PILOT": "false"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "testflight": {
+      "ios": {
+        "appleTeamId": "5F7CG99WV8",
+        "appName": "BIOPHLX Future",
+        "sku": "BIOPHLX-PROPOSEDFUTURE-TEST",
+        "language": "en-US"
+      }
+    }
   }
 }
