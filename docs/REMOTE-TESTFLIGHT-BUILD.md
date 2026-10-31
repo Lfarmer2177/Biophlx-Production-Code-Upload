@@ -2,7 +2,7 @@
 
 The local interactive EAS build stopped at Apple Developer authentication because the saved Apple session expired. This branch includes a guarded GitHub Actions build option for an authorized Apple Account Holder or Admin who cannot use the desktop terminal. It prepares an EAS **build**, not a TestFlight upload or tester invitation. A first-time non-interactive credential setup may still need an authorized Apple team member to finish provisioning in Expo.
 
-The workflow is on the three `codex/*` release branches and runs only when a pushed commit message starts with `Release TestFlight:`. It does not run on ordinary pushes. No Apple or Expo credential belongs in Git, chat, or app code.
+This representative workflow is on `codex/current-app-ota`. If the Apple team can provide the key, the same workflow can be applied to the other two release branches. It runs only when a pushed commit message starts with `Release TestFlight:` and does not run on ordinary pushes. No Apple or Expo credential belongs in Git, chat, or app code.
 
 ## Private setup
 
