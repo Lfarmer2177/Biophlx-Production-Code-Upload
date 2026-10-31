@@ -2,8 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
-const babel = require('../../AWSBiophlxTestCode/node_modules/@babel/core');
-const commonjs = require.resolve('../../AWSBiophlxTestCode/node_modules/@babel/plugin-transform-modules-commonjs');
+const babel = require('@babel/core');
+const commonjs = require.resolve('@babel/plugin-transform-modules-commonjs');
 function load(file) {
   const source = babel.transformSync(fs.readFileSync(file, 'utf8'), { filename: file, babelrc: false, configFile: false, plugins: [commonjs] }).code;
   const target = { exports: {} };
